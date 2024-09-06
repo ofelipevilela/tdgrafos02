@@ -5,6 +5,17 @@
 
 // Função auxiliar para adicionar um nó ao grafo
 void Graph::add_node(size_t node_id, float weight) {
+    Node* current = _first;
+    while (current) {
+        if (current->_id == node_id) {
+            // Atualizar o peso se o nó já existir
+            current->_weight = weight;
+            return;
+        }
+        current = current->_next_node;
+    }
+
+    // Adicionar novo nó se não existir
     Node* new_node = new Node;
     new_node->_id = node_id;
     new_node->_weight = weight;
@@ -17,6 +28,7 @@ void Graph::add_node(size_t node_id, float weight) {
     }
     _first = new_node;
 }
+
 
 // Função auxiliar para adicionar uma aresta ao grafo
 void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
