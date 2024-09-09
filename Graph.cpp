@@ -29,7 +29,6 @@ void Graph::add_node(size_t node_id, float weight) {
     _first = new_node;
 }
 
-
 // Função auxiliar para adicionar uma aresta ao grafo
 void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
     Node* node1 = _first;
@@ -40,7 +39,7 @@ void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
     while (node2 && node2->_id != node_id_2) {
         node2 = node2->_next_node;
     }
-    
+
     if (node1 && node2) {
         Edge* new_edge = new Edge;
         new_edge->_target_id = node_id_2;
@@ -61,32 +60,40 @@ Graph::Graph(std::ifstream& instance) : _first(nullptr) {
     std::string param_label;
     param_stream >> param_label >> _num_clusters;
 
-    // Ler vértices e seus pesos
+    // Ler vértices
     std::getline(instance, line); // Ignorar linha de comentário
     std::getline(instance, line); // set V :=
-    while (std::getline(instance, line) && !line.empty()) {
+    while (std::getline(instance, line) && line.find(';') == std::string::npos) {
         std::istringstream vertex_stream(line);
         size_t node_id;
+        while (vertex_stream >> node_id) {
+            add_node(node_id, 0.0f); // Inicialmente, peso 0.0f
+        }
+    }
+
+    // Ler pesos dos vértices
+    std::getline(instance, line); // Ignorar linha de comentário
+    std::getline(instance, line); // param w :=
+    while (std::getline(instance, line) && line.find(';') == std::string::npos) {
+        std::istringstream weight_stream(line);
+        size_t node_id;
         float weight;
-        if (vertex_stream >> node_id >> weight) {
-            add_node(node_id, weight);
+        if (weight_stream >> node_id >> weight) {
+            add_node(node_id, weight); // Atualizar o peso do nó existente
         }
     }
 
     // Ler arestas
     std::getline(instance, line); // Ignorar linha de comentário
     std::getline(instance, line); // set E :=
-    while (std::getline(instance, line) && !line.empty()) {
-        std::istringstream edge_stream(line);
+    while (std::getline(instance, line) && line.find(';') == std::string::npos) {
+        std::stringstream ss(line);
+        char ignore;
         size_t node_id_1, node_id_2;
-        float weight = 0.0f; // Peso padrão para arestas
 
-        // Lê arestas no formato "node_id1,node_id2"
-        if (edge_stream >> node_id_1) {
-            while (edge_stream >> node_id_2) {
-                add_edge(node_id_1, node_id_2, weight);
-                if (edge_stream.peek() == ',') edge_stream.ignore();
-            }
+        // Ler arestas no formato (n1, n2)
+        while (ss >> ignore >> node_id_1 >> ignore >> node_id_2 >> ignore) {
+            add_edge(node_id_1, node_id_2, 0.0f); // Peso padrão 0.0f
         }
     }
 }
@@ -110,22 +117,14 @@ Graph::~Graph() {
     }
 }
 
-void Graph::remove_node(size_t node_position) {
-    // Implementação simplificada
-}
-
-void Graph::remove_edge(size_t node_position_1, size_t node_position_2) {
-    // Implementação simplificada
-}
-
-// Imprime o grafo
+// Imprime o grafo, mostrando vértices e arestas no formato (n1, n2)
 void Graph::print_graph() {
     Node* node = _first;
     while (node) {
         std::cout << "Vertice: " << node->_id << " Peso: " << node->_weight << "\n";
         Edge* edge = node->_first_edge;
         while (edge) {
-            std::cout << "  Aresta para o vertice: " << edge->_target_id << " Peso: " << edge->_weight << "\n";
+            std::cout << "  Aresta: (" << node->_id << ", " << edge->_target_id << ")\n";
             edge = edge->_next_edge;
         }
         node = node->_next_node;
