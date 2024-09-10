@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include "include/Graph.hpp"
+#include <chrono> // Para medir o tempo
 
 // Função auxiliar para adicionar um nó ao grafo
 void Graph::add_node(size_t node_id, float weight) {
@@ -55,10 +56,20 @@ Graph::Graph(std::ifstream& instance) : _first(nullptr) {
 
     // Ler o parâmetro p
     std::getline(instance, line); // Ignorar linha do comentário
-    std::getline(instance, line); // p :=
-    std::istringstream param_stream(line);
-    std::string param_label;
-    param_stream >> param_label >> _num_clusters;
+    std::getline(instance, line); // linha com "param p :="
+    
+    // Agora, vamos encontrar o número de partições manualmente
+    size_t pos_p = line.find("p := ");
+    if (pos_p != std::string::npos) {
+        // Encontrar o início do número
+        std::string num_str = line.substr(pos_p + 5); // Ignora "p :=" e vai direto ao número
+        _num_clusters = std::stoi(num_str); // Converte para inteiro
+    } else {
+        std::cerr << "Erro: Não foi possível encontrar o número de partições no arquivo." << std::endl;
+        _num_clusters = 0; // Valor de fallback
+    }
+    
+    std::cout << "Número de partições lido: " << _num_clusters << std::endl;
 
     // Ler vértices
     std::getline(instance, line); // Ignorar linha de comentário
@@ -98,6 +109,7 @@ Graph::Graph(std::ifstream& instance) : _first(nullptr) {
     }
 }
 
+
 // Demais métodos da classe Graph
 Graph::Graph() : _first(nullptr) {}
 
@@ -129,8 +141,110 @@ void Graph::print_graph() {
         }
         node = node->_next_node;
     }
+    // mensagem de depuracao para verificar p numero de subgrafos obtido na leitura
+    std::cout <<"O numero de particoes eh: " << _num_clusters << std::endl;
 }
 
 int Graph::conected(size_t node_id_1, size_t node_id_2) {
     return 0; // Implementação simplificada
+}
+
+
+// Função para calcular o gap de um subgrafo
+float Graph::calculate_gap(const Subgraph& subgraph) {
+    return subgraph.max_weight - subgraph.min_weight;
+}
+
+// Algoritmo guloso para particionar o grafo e minimizar o gap
+float Graph::greedy_partition(size_t p) {
+    // Verificar se o número de subgrafos é válido
+    if (p <= 1 || p > _number_of_nodes) {
+        std::cerr << "Erro: número inválido de subgrafos (" << p << "). Deve ser maior que 1 e menor ou igual ao número de vértices." << std::endl;
+        return -1;
+    }
+
+    // Verifique se o grafo tem nós suficientes para particionar
+    if (_first == nullptr) {
+        std::cerr << "Erro: Grafo vazio!" << std::endl;
+        return -1;
+    }
+
+    std::cout << "Iniciando particionamento guloso com " << p << " subgrafos." << std::endl;
+
+    // Inicializar p subgrafos
+    std::vector<Subgraph> subgraphs(p);
+
+    // Obter os vértices e seus pesos (ordenados por peso decrescente)
+    std::vector<std::pair<size_t, float>> vertices; // (id, peso)
+    Node* current_node = _first;
+
+    if (current_node == nullptr) {
+        std::cerr << "Erro: Nenhum nó encontrado no grafo!" << std::endl;
+        return -1;
+    }
+
+    // Adicionando os vértices ao vetor de vértices
+    while (current_node) {
+        vertices.push_back({current_node->_id, current_node->_weight});
+        current_node = current_node->_next_node;
+    }
+
+    // Verificar se há vértices suficientes para os subgrafos
+    if (vertices.size() < p) {
+        std::cerr << "Erro: Número insuficiente de vértices para " << p << " subgrafos!" << std::endl;
+        return -1;
+    }
+
+    // Ordenar os vértices por peso (maior para menor)
+    std::sort(vertices.begin(), vertices.end(), [](const auto& a, const auto& b) {
+        return a.second > b.second;
+    });
+
+    // Atribuir os p maiores vértices aos subgrafos
+    std::cout << "Atribuindo os p maiores vértices aos subgrafos." << std::endl;
+    for (size_t i = 0; i < p; ++i) {
+        size_t vertex_id = vertices[i].first;
+        float vertex_weight = vertices[i].second;
+        subgraphs[i].vertices.push_back(vertex_id);
+        subgraphs[i].max_weight = subgraphs[i].min_weight = vertex_weight;
+        std::cout << "Vértice " << vertex_id << " atribuído ao subgrafo " << i << " com peso " << vertex_weight << "." << std::endl;
+    }
+
+    // Atribuir os vértices restantes
+    std::cout << "Atribuindo os vértices restantes." << std::endl;
+    for (size_t i = p; i < vertices.size(); ++i) {
+        size_t vertex_id = vertices[i].first;
+        float vertex_weight = vertices[i].second;
+
+        size_t best_subgraph = 0;
+        float best_gap_increase = std::numeric_limits<float>::max();
+
+        // Encontrar o subgrafo que minimiza o aumento do gap
+        for (size_t j = 0; j < p; ++j) {
+            float new_max_weight = std::max(subgraphs[j].max_weight, vertex_weight);
+            float new_min_weight = std::min(subgraphs[j].min_weight, vertex_weight);
+            float gap_increase = (new_max_weight - new_min_weight) - calculate_gap(subgraphs[j]);
+
+            if (gap_increase < best_gap_increase) {
+                best_gap_increase = gap_increase;
+                best_subgraph = j;
+            }
+        }
+
+        // Adicionar o vértice ao melhor subgrafo
+        subgraphs[best_subgraph].vertices.push_back(vertex_id);
+        subgraphs[best_subgraph].max_weight = std::max(subgraphs[best_subgraph].max_weight, vertex_weight);
+        subgraphs[best_subgraph].min_weight = std::min(subgraphs[best_subgraph].min_weight, vertex_weight);
+        std::cout << "Vértice " << vertex_id << " atribuído ao subgrafo " << best_subgraph << " com peso " << vertex_weight << "." << std::endl;
+    }
+
+    // Calcular o gap total
+    float total_gap = 0;
+    std::cout << "Calculando o gap total." << std::endl;
+    for (const auto& subgraph : subgraphs) {
+        total_gap += calculate_gap(subgraph);
+    }
+
+    std::cout << "Gap total calculado: " << total_gap << std::endl;
+    return total_gap;
 }

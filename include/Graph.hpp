@@ -4,6 +4,16 @@
 #include "Node.hpp"
 #include "defines.hpp"
 
+// Declaração da estrutura Subgraph
+struct Subgraph {
+    std::vector<size_t> vertices; // Vértices no subgrafo
+    float max_weight;             // Maior peso no subgrafo
+    float min_weight;             // Menor peso no subgrafo
+
+    Subgraph() : max_weight(0), min_weight(0) {}
+};
+
+
 class Graph
 {
 public:
@@ -23,7 +33,8 @@ public:
     int conected(size_t node_id_1, size_t node_id_2);
 
     size_t _num_clusters; // Adiciona esta linha para armazenar o número de clusters
-
+    float greedy_partition(size_t p);
+    float calculate_gap(const Subgraph& subgraph);
 private:
     size_t _number_of_nodes;
     size_t _number_of_edges;

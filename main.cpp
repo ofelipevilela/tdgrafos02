@@ -1,7 +1,7 @@
 #include "include/Graph.hpp"
 #include <iostream>
 #include <fstream>
-
+#include <chrono> // Para medir o tempo
 void showMenu() {
     std::cout << "\nMenu:\n";
     std::cout << "1. Guloso\n";
@@ -38,6 +38,14 @@ int main(int argc, char* argv[]) {
         switch(option) {
             case 1: {
                 // Fecho transitivo direto de um vértice
+                size_t p = graph._num_clusters; // Número de subgrafos
+                auto start = std::chrono::high_resolution_clock::now();
+                float total_gap = graph.greedy_partition(p);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed = end - start;
+                
+                std::cout << "Gap total: " << total_gap << std::endl;
+                std::cout << "Tempo de execução: " << elapsed.count() << " segundos\n";
                 break;
             }
             case 2: {
