@@ -3,6 +3,8 @@
 #include <sstream>
 #include "include/Graph.hpp"
 #include <chrono> // Para medir o tempo
+#include <random>
+#include <cmath>
 
 // Função auxiliar para adicionar um nó ao grafo
 void Graph::add_node(size_t node_id, float weight) {
@@ -28,6 +30,9 @@ void Graph::add_node(size_t node_id, float weight) {
         _first->_previous_node = new_node;
     }
     _first = new_node;
+
+    // Atualizar o número de nós
+    _number_of_nodes++;
 }
 
 // Função auxiliar para adicionar uma aresta ao grafo
@@ -53,23 +58,16 @@ void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
 // Construtor que lê o arquivo e constrói o grafo
 Graph::Graph(std::ifstream& instance) : _first(nullptr) {
     std::string line;
-
-    // Ler o parâmetro p
-    std::getline(instance, line); // Ignorar linha do comentário
-    std::getline(instance, line); // linha com "param p :="
-    
-    // Agora, vamos encontrar o número de partições manualmente
-    size_t pos_p = line.find("p := ");
-    if (pos_p != std::string::npos) {
-        // Encontrar o início do número
-        std::string num_str = line.substr(pos_p + 5); // Ignora "p :=" e vai direto ao número
-        _num_clusters = std::stoi(num_str); // Converte para inteiro
-    } else {
-        std::cerr << "Erro: Não foi possível encontrar o número de partições no arquivo." << std::endl;
-        _num_clusters = 0; // Valor de fallback
+    // Procurar pela linha com "param p :="
+    while (std::getline(instance, line)) {
+        if (line.find("param p") != std::string::npos) {
+            // Ignora "param p :=" e lê o número diretamente
+            std::istringstream param_stream(line);
+            std::string ignore;
+            param_stream >> ignore >> ignore >> ignore >> _num_clusters;
+            break; // Já encontramos o número de partições, então podemos sair
+        }
     }
-    
-    std::cout << "Número de partições lido: " << _num_clusters << std::endl;
 
     // Ler vértices
     std::getline(instance, line); // Ignorar linha de comentário
@@ -149,7 +147,7 @@ int Graph::conected(size_t node_id_1, size_t node_id_2) {
     return 0; // Implementação simplificada
 }
 
-
+/// GULOSO
 // Função para calcular o gap de um subgrafo
 float Graph::calculate_gap(const Subgraph& subgraph) {
     return subgraph.max_weight - subgraph.min_weight;
@@ -201,7 +199,7 @@ float Graph::greedy_partition(size_t p) {
     });
 
     // Atribuir os p maiores vértices aos subgrafos
-    std::cout << "Atribuindo os p maiores vértices aos subgrafos." << std::endl;
+    std::cout << "Atribuindo os" << _num_clusters << " maiores vértices aos subgrafos." << std::endl;
     for (size_t i = 0; i < p; ++i) {
         size_t vertex_id = vertices[i].first;
         float vertex_weight = vertices[i].second;
@@ -235,7 +233,7 @@ float Graph::greedy_partition(size_t p) {
         subgraphs[best_subgraph].vertices.push_back(vertex_id);
         subgraphs[best_subgraph].max_weight = std::max(subgraphs[best_subgraph].max_weight, vertex_weight);
         subgraphs[best_subgraph].min_weight = std::min(subgraphs[best_subgraph].min_weight, vertex_weight);
-        std::cout << "Vértice " << vertex_id << " atribuído ao subgrafo " << best_subgraph << " com peso " << vertex_weight << "." << std::endl;
+        //std::cout << "Vértice " << vertex_id << " atribuído ao subgrafo " << best_subgraph << " com peso " << vertex_weight << "." << std::endl;
     }
 
     // Calcular o gap total
@@ -247,4 +245,112 @@ float Graph::greedy_partition(size_t p) {
 
     std::cout << "Gap total calculado: " << total_gap << std::endl;
     return total_gap;
+
+    }
+
+/// ALNS
+void Graph::alns_optimization() {
+    // Exemplo básico de uma abordagem ALNS
+    std::cout << "Iniciando otimização ALNS...\n";
+
+    // Passo 1: Destruir solução atual (exemplo)
+    destroy_solution();
+
+    // Passo 2: Reparar a solução (exemplo)
+    repair_solution();
+
+    // Passo 3: Perturbar a solução (exemplo)
+    perturb_solution();
+
+    // Você pode adicionar mais etapas e refinamentos aqui
+    std::cout << "Otimização ALNS concluída.\n";
+}
+
+void Graph::destroy_solution() {
+    std::cout << "Destruindo a solução atual...\n";
+
+    // Resetar os subgrafos
+    // Esta função deve reverter ou desconectar a solução atual
+    // Por simplicidade, vamos apenas redefinir a estrutura dos subgrafos
+
+    // Exemplo de redefinir todas as arestas (isto é uma simplificação)
+    Node* node = _first;
+    while (node) {
+        Edge* edge = node->_first_edge;
+        while (edge) {
+            Edge* next_edge = edge->_next_edge;
+            delete edge; // Libera a memória da aresta
+            edge = next_edge;
+        }
+        node->_first_edge = nullptr; // Remove as arestas do nó
+        node = node->_next_node;
+    }
+
+    std::cout << "Solução destruída.\n";
+}
+
+void Graph::repair_solution() {
+    std::cout << "Reparando a solução...\n";
+
+    // Reconstruir arestas e subgrafos (exemplo básico)
+    // Isso pode incluir a reinicialização dos subgrafos ou reatribuição de arestas
+
+    // Exemplo de adicionar arestas (simplificado, deve ser ajustado conforme a lógica do problema)
+    Node* node = _first;
+    while (node) {
+        // Adicionar arestas fictícias ou reconectar nós se necessário
+        // Implementar lógica específica de reparo aqui
+        node = node->_next_node;
+    }
+
+    std::cout << "Solução reparada.\n";
+}
+
+#include <random>
+
+void Graph::perturb_solution() {
+    std::cout << "Perturbando a solução...\n";
+
+    // Usar um gerador de números aleatórios
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0, 1);
+
+    // Exemplo de perturbação: Adicionar arestas aleatórias
+    Node* node = _first;
+    while (node) {
+        // Decidir aleatoriamente adicionar uma nova aresta
+        if (dis(gen) < 0.1) { // Probabilidade de adicionar uma aresta
+            Node* target_node = _first;
+            while (target_node && target_node->_id == node->_id) {
+                target_node = target_node->_next_node;
+            }
+
+            if (target_node) {
+                float random_weight = dis(gen) * 10; // Peso aleatório
+                add_edge(node->_id, target_node->_id, random_weight);
+                std::cout << "Aresta adicionada entre " << node->_id << " e " << target_node->_id << " com peso " << random_weight << ".\n";
+            }
+        }
+
+        node = node->_next_node;
+    }
+
+    std::cout << "Solução perturbada.\n";
+}
+
+void Graph::print_alns_result() {
+    std::cout << "Resultado do ALNS:\n";
+
+    Node* node = _first;
+    while (node) {
+        std::cout << "Vértice: " << node->_id << " Peso: " << node->_weight << "\n";
+        Edge* edge = node->_first_edge;
+        while (edge) {
+            std::cout << "  Aresta: (" << node->_id << ", " << edge->_target_id << ") Peso: " << edge->_weight << "\n";
+            edge = edge->_next_edge;
+        }
+        node = node->_next_node;
+    }
+    std::cout <<"O número de partições é: " << _num_clusters << std::endl;
 }

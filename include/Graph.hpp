@@ -35,6 +35,12 @@ public:
     size_t _num_clusters; // Adiciona esta linha para armazenar o número de clusters
     float greedy_partition(size_t p);
     float calculate_gap(const Subgraph& subgraph);
+    
+    // Função ALNS para otimizar a solução obtida pelo algoritmo guloso
+    void alns_optimization(); // Método para o ALNS
+    void print_alns_result(); // Declaração da função para imprimir o resultado do ALNS
+
+
 private:
     size_t _number_of_nodes;
     size_t _number_of_edges;
@@ -43,6 +49,11 @@ private:
     bool   _weighted_nodes;
     Node  *_first;
     Node  *_last;
+
+    // Métodos auxiliares do ALNS, se necessários
+    void destroy_solution();
+    void repair_solution();
+    void perturb_solution();
 };
 
 #endif  //GRAPH_HPP

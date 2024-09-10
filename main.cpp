@@ -5,8 +5,8 @@
 void showMenu() {
     std::cout << "\nMenu:\n";
     std::cout << "1. Guloso\n";
-    std::cout << "2. Guloso randomizado\n";
-    std::cout << "3. Guloso randomizado\n";
+    std::cout << "2. Guloso randomizado adaptativo\n";
+    std::cout << "3. Guloso randomizado adaptativo reativo\n";
     std::cout << "4. Imprimir grafo\n"; // Nova opção para imprimir o grafo
     std::cout << "0. Sair\n";
     std::cout << "Escolha uma opcao: ";
@@ -37,15 +37,19 @@ int main(int argc, char* argv[]) {
 
         switch(option) {
             case 1: {
-                // Fecho transitivo direto de um vértice
-                size_t p = graph._num_clusters; // Número de subgrafos
+                size_t p = graph._num_clusters;
                 auto start = std::chrono::high_resolution_clock::now();
                 float total_gap = graph.greedy_partition(p);
                 auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed = end - start;
-                
-                std::cout << "Gap total: " << total_gap << std::endl;
-                std::cout << "Tempo de execução: " << elapsed.count() << " segundos\n";
+
+                std::cout << "Gap total inicial: " << total_gap << std::endl;
+                std::cout << "Tempo de execução (Guloso): " << elapsed.count() << " segundos\n";
+
+                // Agora rodar o ALNS para otimizar o resultado
+                graph.alns_optimization();
+                graph.print_alns_result();
+
                 break;
             }
             case 2: {
