@@ -33,9 +33,11 @@ public:
     int conected(size_t node_id_1, size_t node_id_2);
 
     size_t _num_clusters; // Adiciona esta linha para armazenar o número de clusters
-    float guloso(size_t p);
     float gap(const Subgraph& subgraph);
- 
+    float guloso(size_t p);
+    float guloso_randomizado_adaptativo(size_t p, float alpha);
+    float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
+
 private:
     size_t _number_of_nodes;
     size_t _number_of_edges;

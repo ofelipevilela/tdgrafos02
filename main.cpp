@@ -2,6 +2,7 @@
 #include "include/defines.hpp"
 
 using namespace std;
+
 void showMenu() {
     cout << "\nMenu:\n";
     cout << "1. Guloso\n";
@@ -46,11 +47,30 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 2: {
-                cout << "Opção 2 selecionada\n";
+                size_t p = graph._num_clusters;
+                float alpha;
+                cout << "Quanto menor o alpha, mais guloso o algoritmo se torna; quanto maior, mais aleatoriedade." << endl;
+                //cout << "Digite o valor de alpha (0 <= alpha <= 1): ";
+                cout << "Vamos considerar alpha = 0.5 " << endl;
+                //cin >> alpha;
+                auto start = chrono::high_resolution_clock::now();
+                float total_gap = graph.guloso_randomizado_adaptativo(p, 0.5);
+                auto end = chrono::high_resolution_clock::now();
+                chrono::duration<double> elapsed = end - start;
+                cout << "Tempo de execução (Guloso Randomizado Adaptativo): " << elapsed.count() << " segundos\n";
                 break;
             }
             case 3: {
-                cout << "Opção 3 selecionada\n";
+                size_t p = graph._num_clusters;
+                size_t max_iter;
+                cout << "Digite o número de iterações para o algoritmo reativo: ";
+                cin >> max_iter;
+                auto start = chrono::high_resolution_clock::now();
+                float total_gap = graph.guloso_randomizado_adaptativo_reativo(p, max_iter);
+                auto end = chrono::high_resolution_clock::now();
+                chrono::duration<double> elapsed = end - start;
+                cout << "Gap total (Guloso Randomizado Adaptativo Reativo): " << total_gap << endl;
+                cout << "Tempo de execução (Guloso Randomizado Adaptativo Reativo): " << elapsed.count() << " segundos\n";
                 break;
             }
             case 4: {

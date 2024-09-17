@@ -10,5 +10,6 @@
 #include <vector> /* implementação do container vector e suas operações */
 #include <chrono> // Para medir o tempo
 #include <sstream>
+#include <random> // Para gerar números aleatórios
 
 #endif  //DEFINES_HPP   
