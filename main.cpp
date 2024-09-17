@@ -1,28 +1,28 @@
 #include "include/Graph.hpp"
-#include <iostream>
-#include <fstream>
-#include <chrono> // Para medir o tempo
+#include "include/defines.hpp"
+
+using namespace std;
 void showMenu() {
-    std::cout << "\nMenu:\n";
-    std::cout << "1. Guloso\n";
-    std::cout << "2. Guloso randomizado adaptativo\n";
-    std::cout << "3. Guloso randomizado adaptativo reativo\n";
-    std::cout << "4. Imprimir grafo\n"; // Nova opção para imprimir o grafo
-    std::cout << "0. Sair\n";
-    std::cout << "Escolha uma opcao: ";
+    cout << "\nMenu:\n";
+    cout << "1. Guloso\n";
+    cout << "2. Guloso randomizado adaptativo\n";
+    cout << "3. Guloso randomizado adaptativo reativo\n";
+    cout << "4. Imprimir grafo\n"; // Nova opção para imprimir o grafo
+    cout << "0. Sair\n";
+    cout << "Escolha uma opcao: ";
 }
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        std::cerr << "Uso incorreto! Uso correto: " << argv[0] << " <input_file>\n";
+        cerr << "Uso incorreto! Uso correto: " << argv[0] << " <input_file>\n";
         return 1;
     }
 
     const char* input_file_name = argv[1];
 
-    std::ifstream input_file(input_file_name);
+    ifstream input_file(input_file_name);
     if (!input_file) {
-        std::cerr << "Erro ao abrir o arquivo de entrada: " << input_file_name << "\n";
+        cerr << "Erro ao abrir o arquivo de entrada: " << input_file_name << "\n";
         return 1;
     }
 
@@ -33,31 +33,24 @@ int main(int argc, char* argv[]) {
     int option;
     do {
         showMenu();
-        std::cin >> option;
+        cin >> option;
 
         switch(option) {
             case 1: {
                 size_t p = graph._num_clusters;
-                auto start = std::chrono::high_resolution_clock::now();
-                float total_gap = graph.greedy_partition(p);
-                auto end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> elapsed = end - start;
-
-                std::cout << "Gap total inicial: " << total_gap << std::endl;
-                std::cout << "Tempo de execução (Guloso): " << elapsed.count() << " segundos\n";
-
-                // Agora rodar o ALNS para otimizar o resultado
-                graph.alns_optimization();
-                graph.print_alns_result();
-
+                auto start = chrono::high_resolution_clock::now();
+                float total_gap = graph.guloso(p);
+                auto end = chrono::high_resolution_clock::now();
+                chrono::duration<double> elapsed = end - start;
+                cout << "Tempo de execução (Guloso): " << elapsed.count() << " segundos\n";
                 break;
             }
             case 2: {
-                std::cout << "Opção 2 selecionada\n";
+                cout << "Opção 2 selecionada\n";
                 break;
             }
             case 3: {
-                std::cout << "Opção 3 selecionada\n";
+                cout << "Opção 3 selecionada\n";
                 break;
             }
             case 4: {
@@ -66,11 +59,11 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 0: {
-                std::cout << "Saindo...\n";
+                cout << "Saindo...\n";
                 break;
             }
             default:
-                std::cout << "Opção inválida!\n";
+                cout << "Opção inválida!\n";
                 break;
         }
 
