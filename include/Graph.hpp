@@ -3,6 +3,7 @@
 
 #include "Node.hpp"
 #include "defines.hpp"
+#include <vector>
 
 // Declaração da estrutura Subgraph
 struct Subgraph {
@@ -37,6 +38,7 @@ public:
     float guloso(size_t p);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
+
 
 private:
     size_t _number_of_nodes;

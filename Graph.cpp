@@ -1,5 +1,7 @@
 #include "include/Graph.hpp"
 #include "include/defines.hpp"
+#include <queue>
+
 using namespace std;
 
 // Construtor que lê o arquivo e constrói o grafo
@@ -139,135 +141,123 @@ void Graph::print_graph() {
 }
 
 int Graph::conected(size_t node_id_1, size_t node_id_2) {
-    return 0; // Implementação simplificada
+    // Verifica se os dois vértices são os mesmos
+    if (node_id_1 == node_id_2) return 1;
+
+    // Usar uma fila para implementar a BFS
+    queue<size_t> queue;
+    vector<bool> visited(_number_of_nodes, false);
+
+    // Adicionar o primeiro nó na fila e marcar como visitado
+    queue.push(node_id_1);
+    visited[node_id_1] = true;
+
+    while (!queue.empty()) {
+        size_t current_node_id = queue.front();
+        queue.pop();
+
+        // Obter o nó atual da lista de nós
+        Node* current_node = _first;
+        while (current_node != nullptr && current_node->_id != current_node_id) {
+            current_node = current_node->_next_node;
+        }
+
+        // Percorrer todas as arestas do nó atual
+        Edge* edge = current_node->_first_edge;
+        while (edge != nullptr) {
+            size_t neighbor_id = edge->_target_id;
+
+            // Se encontrarmos o segundo nó, retornamos verdadeiro (1)
+            if (neighbor_id == node_id_2) {
+                return 1;
+            }
+
+            // Se o vizinho ainda não foi visitado, o adicionamos na fila
+            if (!visited[neighbor_id]) {
+                visited[neighbor_id] = true;
+                queue.push(neighbor_id);
+            }
+
+            // Continuar para a próxima aresta
+            edge = edge->_next_edge;
+        }
+    }
+
+    // Se a busca terminar e não encontramos uma conexão, retornamos falso (0)
+    return 0;
 }
+
 
 /// GULOSO
-
-// Função para calcular o gap de um subgrafo
-float Graph::gap(const Subgraph& subgraph) {
-    if (subgraph.vertices.empty()) {
-        return 0;  // Gap é zero se o subgrafo estiver vazio
-    }
-    // diferença entre o peso máximo e o mínimo
-    float gap = subgraph.max_weight - subgraph.min_weight;
-    
-    // Depuração para garantir que o gap está sendo calculado corretamente
-    //cout << "Calculando gap: max = " << subgraph.max_weight << ", min = " << subgraph.min_weight << ", gap = " << gap << endl;
-
-    return gap;
-}
-// Algoritmo guloso para particionar o grafo e minimizar o gap
 float Graph::guloso(size_t p) {
-    // Verificar se o número de subgrafos é válido
-    if (p <= 1 || p > _number_of_nodes) {
-        cerr << "Erro: número inválido de subgrafos (" << p << "). Deve ser maior que 1 e menor ou igual ao número de vértices." << endl;
-        return -1;
+    if (p > _number_of_nodes) 
+        cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
+    
+    // Ordenar vértices por peso em ordem decrescente
+    vector<Node*> nodes;
+    Node* current = _first;
+    while (current) {
+        nodes.push_back(current);
+        current = current->_next_node;
     }
-
-    // Verifique se o grafo tem nós suficientes para particionar
-    if (_first == nullptr) {
-        cerr << "Erro: Grafo vazio!" << endl;
-        return -1;
-    }
-
-    cout << "Iniciando particionamento guloso com " << p << " subgrafos." << endl;
-
-    // Inicializar p subgrafos
-    vector<Subgraph> subgraphs(p);
-
-    // Obter os vértices e seus pesos (ordenados por peso decrescente)
-    vector<pair<size_t, float>> vertices; // (id, peso)
-    Node* current_node = _first;
-
-    if (current_node == nullptr) {
-        cerr << "Erro: Nenhum nó encontrado no grafo!" << endl;
-        return -1;
-    }
-
-    // Adicionando os vértices ao vetor de vértices
-    while (current_node) {
-        vertices.push_back({current_node->_id, current_node->_weight});
-        current_node = current_node->_next_node;
-    }
-
-    // Verificar se há vértices suficientes para os subgrafos
-    if (vertices.size() < p) {
-        cerr << "Erro: Número insuficiente de vértices para " << p << " subgrafos!" << endl;
-        return -1;
-    }
-
-    // Ordenar os vértices por peso (maior para menor)
-    sort(vertices.begin(), vertices.end(), [](const auto& a, const auto& b) {
-        return a.second > b.second;
+    sort(nodes.begin(), nodes.end(), [](Node* a, Node* b) {
+        return a->_weight > b->_weight;
     });
 
-    // Atribuir os p maiores vértices aos subgrafos
-    cout << "Atribuindo os " << _num_clusters << " maiores vértices aos subgrafos." << endl;
+    // Inicializar subgrafos
+    vector<Subgraph> subgraphs(p);
+
+    // Atribuir dois vértices a cada subgrafo
+    size_t node_index = 0;
     for (size_t i = 0; i < p; ++i) {
-        size_t vertex_id = vertices[i].first;
-        float vertex_weight = vertices[i].second;
-        subgraphs[i].vertices.push_back(vertex_id);
-        subgraphs[i].max_weight = subgraphs[i].min_weight = vertex_weight;
-        cout << "Vértice " << vertex_id << " atribuído ao subgrafo " << i + 1 << " com peso " << vertex_weight << "." << endl;
+        if (node_index < nodes.size()) {
+            subgraphs[i].vertices.push_back(nodes[node_index]->_id);
+            subgraphs[i].max_weight = nodes[node_index]->_weight;
+            subgraphs[i].min_weight = nodes[node_index]->_weight;
+            ++node_index;
+        }
+        if (node_index < nodes.size()) {
+            subgraphs[i].vertices.push_back(nodes[node_index]->_id);
+            subgraphs[i].max_weight = max(subgraphs[i].max_weight, nodes[node_index]->_weight);
+            subgraphs[i].min_weight = min(subgraphs[i].min_weight, nodes[node_index]->_weight);
+            ++node_index;
+        }
     }
 
     // Atribuir os vértices restantes
-    cout << "Atribuindo os vértices restantes..." << endl;
-    for (size_t i = p; i < vertices.size(); ++i) {
-        size_t vertex_id = vertices[i].first;
-        float vertex_weight = vertices[i].second;
-
-        size_t best_subgraph = 0;
-        float best_gap_increase = numeric_limits<float>::max();
-
-        // Encontrar o subgrafo que minimiza o aumento do gap
-        for (size_t j = 0; j < p; ++j) {
-            float new_max_weight = max(subgraphs[j].max_weight, vertex_weight);
-            float new_min_weight = min(subgraphs[j].min_weight, vertex_weight);
-            float gap_increase = (new_max_weight - new_min_weight) - gap(subgraphs[j]);
-
-            if (gap_increase < best_gap_increase) {
-                best_gap_increase = gap_increase;
-                best_subgraph = j;
-            }
-        }
-
-        // Adicionar o vértice ao melhor subgrafo
-        subgraphs[best_subgraph].vertices.push_back(vertex_id);
-        subgraphs[best_subgraph].max_weight = max(subgraphs[best_subgraph].max_weight, vertex_weight);
-        subgraphs[best_subgraph].min_weight = min(subgraphs[best_subgraph].min_weight, vertex_weight);
-        //cout << "Vértice " << vertex_id << " atribuído ao subgrafo " << best_subgraph << " com peso " << vertex_weight << "." << endl;
+    for (; node_index < nodes.size(); ++node_index) {
+        // Escolher o subgrafo com o menor gap atual para adicionar o próximo vértice
+        auto min_gap_subgraph = min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
+            return a.max_weight - a.min_weight < b.max_weight - b.min_weight;
+        });
+        min_gap_subgraph->vertices.push_back(nodes[node_index]->_id);
+        min_gap_subgraph->max_weight = max(min_gap_subgraph->max_weight, nodes[node_index]->_weight);
+        min_gap_subgraph->min_weight = min(min_gap_subgraph->min_weight, nodes[node_index]->_weight);
     }
 
-    // // Calcular o gap total
-    // float total_gap = 0;
-    // cout << "Calculando o gap total..." << endl;
-    // for (const auto& subgraph : subgraphs) {
-    //     total_gap += gap(subgraph);
-    // }
-
-    // cout << "Gap total calculado: " << total_gap << endl;
-    // return total_gap;
-
-    float total_gap = 0; // Mantenha apenas esta declaração
-    cout << "Calculando o gap total...\n";
-    for (size_t i = 0; i < subgraphs.size(); ++i) {
+    // Calcular e imprimir o gap para cada subgrafo
+    float total_gap = 0;
+    for (size_t i = 0; i < p; ++i) {
         float subgraph_gap = gap(subgraphs[i]);
-
-        // Mostrar os vértices de cada subgrafo e seu gap individual
-        cout << "Subgrafo " << i + 1 << " (Vértices: ";
+        cout << "Subgrafo " << (i + 1) << " (Vértices: ";
         for (size_t vertex : subgraphs[i].vertices) {
             cout << vertex << " ";
         }
         cout << ") - Gap: " << subgraph_gap << endl;
-
         total_gap += subgraph_gap;
     }
-
     cout << "Gap total calculado: " << total_gap << endl;
     return total_gap;
 }
+
+// Adicione este método à classe Graph para calcular o gap de um subgrafo
+float Graph::gap(const Subgraph& subgraph) {
+    if (subgraph.vertices.empty()) {
+        return 0.0f;
+    }
+    return subgraph.max_weight - subgraph.min_weight;
+}
+
 // Algoritmo guloso randomizado adaptativo (GRASP) para particionar o grafo e minimizar o gap
 float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     // Verificar se o número de subgrafos é válido
@@ -281,9 +271,6 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
         cerr << "Erro: Grafo vazio!" << endl;
         return -1;
     }
-
-    // Iniciar a medição do tempo de execução
-    auto start = chrono::high_resolution_clock::now();
 
     cout << "Iniciando particionamento guloso randomizado adaptativo com " << p << " subgrafos." << endl;
 
@@ -327,26 +314,43 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
         size_t vertex_id = vertices[i].first;
         float vertex_weight = vertices[i].second;
 
-        vector<pair<size_t, float>> lcr; // Lista de Candidatos Restrita (LCR)
-        float best_gap_increase = numeric_limits<float>::max();
+        // Lista de Candidatos Restrita (LCR)
+        vector<pair<size_t, float>> lcr;
+        float best_total_gap_increase = numeric_limits<float>::max();
 
-        // Criar a LCR com base no aumento do gap
+        // Calcular o gap total atual antes da inserção
+        float current_total_gap = 0.0f;
+        for (const auto& subgraph : subgraphs) {
+            current_total_gap += gap(subgraph);
+        }
+
+        // Avaliar o impacto de adicionar o vértice em cada subgrafo
         for (size_t j = 0; j < p; ++j) {
+            // Impedir que subgrafos fiquem desbalanceados (muitos ou poucos vértices)
+            if (subgraphs[j].vertices.size() > vertices.size() / p + 1) {
+                continue;  // Pular esse subgrafo se ele já tem mais vértices que o necessário
+            }
+
             float new_max_weight = max(subgraphs[j].max_weight, vertex_weight);
             float new_min_weight = min(subgraphs[j].min_weight, vertex_weight);
-            float gap_increase = (new_max_weight - new_min_weight) - gap(subgraphs[j]);
+            float new_gap = new_max_weight - new_min_weight;
 
-            lcr.push_back({j, gap_increase});
-            if (gap_increase < best_gap_increase) {
-                best_gap_increase = gap_increase;
+            // Calcular o novo gap total caso o vértice seja adicionado ao subgrafo 'j'
+            float new_total_gap = current_total_gap - gap(subgraphs[j]) + new_gap;
+
+            // Adicionar penalização para subgrafos com menos vértices
+            float vertex_count_penalty = float(subgraphs[j].vertices.size()) / float(vertices.size() / p);
+            new_total_gap += vertex_count_penalty;
+
+            // Adicionar à LCR
+            lcr.push_back({j, new_total_gap});
+
+            if (new_total_gap < best_total_gap_increase) {
+                best_total_gap_increase = new_total_gap;
             }
         }
-        // // Mensagem de depuração para ver a LCR
-        // cout << "LCR para vertice " << vertex_id << " (peso " << vertex_weight << "):" << endl;
-        // for (size_t j = 0; j < lcr.size(); ++j) {
-        //     cout << "  Subgrafo: " << lcr[j].first << " Gap aumenta: " << lcr[j].second << endl;
-        // }
-        // Ordenar LCR pelo aumento de gap
+
+        // Ordenar a LCR pelo menor aumento na soma total dos gaps
         sort(lcr.begin(), lcr.end(), [](const auto& a, const auto& b) {
             return a.second < b.second;
         });
@@ -362,13 +366,12 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
         subgraphs[selected_subgraph].min_weight = min(subgraphs[selected_subgraph].min_weight, vertex_weight);
     }
 
-    // Calcular o gap total com depuração
-    float total_gap = 0; // Mantenha apenas esta declaração
+    // Calcular o gap total e imprimir os resultados
+    float total_gap = 0;
     cout << "Calculando o gap total...\n";
     for (size_t i = 0; i < subgraphs.size(); ++i) {
         float subgraph_gap = gap(subgraphs[i]);
 
-        // Mostrar os vértices de cada subgrafo e seu gap individual
         cout << "Subgrafo " << i + 1 << " (Vértices: ";
         for (size_t vertex : subgraphs[i].vertices) {
             cout << vertex << " ";
@@ -379,9 +382,12 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     }
 
     cout << "Gap total calculado: " << total_gap << endl;
-    
+
     return total_gap;
 }
+
+
+
 float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     // Lista de valores possíveis para alpha e suas probabilidades
     vector<float> alphas = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
