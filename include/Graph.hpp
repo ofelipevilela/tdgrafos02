@@ -36,6 +36,8 @@ public:
     size_t _num_clusters; // Adiciona esta linha para armazenar o número de clusters
     float gap(const Subgraph& subgraph);
     float guloso(size_t p);
+    
+    bool are_connected(size_t vertex1, size_t vertex2);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
 
