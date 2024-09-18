@@ -40,7 +40,7 @@ public:
     bool are_connected(size_t vertex1, size_t vertex2);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
-
+    bool check_connected(const std::vector<size_t>& vertices); // Certifique-se de usar std::vector
 
 private:
     size_t _number_of_nodes;

@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <stack>
 #include <set>
+#include <vector>
 
 using namespace std;
 
@@ -162,7 +163,7 @@ int Graph::conected(size_t node_id_1, size_t node_id_2) {
     }
 
     // Depuração: Verificar o início e fim
-    cout << "Verificando conectividade entre: " << node_id_1 << " e " << node_id_2 << endl;
+    //cout << "Verificando conectividade entre: " << node_id_1 << " e " << node_id_2 << endl;
 
     // Implementar busca em largura (BFS) para verificar conectividade
     queue<size_t> q;
@@ -191,7 +192,7 @@ int Graph::conected(size_t node_id_1, size_t node_id_2) {
         while (edge) {
             size_t neighbor_id = edge->_target_id;
             if (neighbor_id == node_id_2) {
-                cout << "Nó " << node_id_2 << " encontrado! Conectados." << endl;
+                //cout << "Nó " << node_id_2 << " encontrado! Conectados." << endl;
                 return 1; // Encontrou o nó alvo
             }
             if (visited.find(neighbor_id) == visited.end()) {
@@ -202,10 +203,9 @@ int Graph::conected(size_t node_id_1, size_t node_id_2) {
         }
     }
 
-    cout << "Nó " << node_id_2 << " não está conectado ao nó " << node_id_1 << endl;
+    //cout << "Nó " << node_id_2 << " não está conectado ao nó " << node_id_1 << endl;
     return 0;
 }
-
 
 
 
@@ -441,8 +441,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     return total_gap;
 }
 
-
-
+// Algoritmo guloso randomizado adaptativo Reativo
 float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     // Lista de valores possíveis para alpha e suas probabilidades
     vector<float> alphas = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
@@ -463,8 +462,26 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
         size_t alpha_index = alpha_distribution(gen);
         float alpha = alphas[alpha_index];
 
+        cout << "Iteração " << iter + 1 << " - Alpha escolhido: " << alpha << endl;
+
         // Executar uma iteração do algoritmo guloso randomizado adaptativo
+        vector<Subgraph> subgraphs(p);
+        vector<float> subgraph_weights(p, 0.0f);
         float current_gap = guloso_randomizado_adaptativo(p, alpha);
+
+        // Verificação de conectividade dos subgrafos
+        bool conexo = true;
+        for (const auto& subgraph : subgraphs) {
+            if (!check_connected(subgraph.vertices)) {
+                conexo = false;
+                break;
+            }
+        }
+
+        if (!conexo) {
+            cerr << "Erro: Subgrafo não é conexo." << endl;
+            current_gap = numeric_limits<float>::max(); // Penalizar a solução
+        }
 
         // Atualizar o desempenho do alpha escolhido
         alpha_performance[alpha_index] += current_gap;
@@ -478,6 +495,12 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
         // Recalcular as probabilidades a cada 10 iterações
         if ((iter + 1) % 10 == 0) {
             float total_performance = 0.0f;
+            cout << "Probabilidades antes da atualização: ";
+            for (const auto& prob : probabilities) {
+                cout << prob << " ";
+            }
+            cout << endl;
+
             for (size_t i = 0; i < alphas.size(); ++i) {
                 if (alpha_count[i] > 0) {
                     probabilities[i] = 1.0f / (alpha_performance[i] / alpha_count[i]);
@@ -491,6 +514,12 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
             for (auto& prob : probabilities) {
                 prob /= total_performance;
             }
+
+            cout << "Probabilidades normalizadas: ";
+            for (const auto& prob : probabilities) {
+                cout << prob << " ";
+            }
+            cout << endl;
         }
     }
 
@@ -498,5 +527,34 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     chrono::duration<double> elapsed = end - start;
     cout << "Tempo total de execução: " << elapsed.count() << " segundos." << endl;
 
-    return best_gap; // Retorna o melhor gap encontrado
+    return best_gap; // Retorna o melhor gap encontrado
 }
+
+
+bool Graph::check_connected(const std::vector<size_t>& vertices) {
+    if (vertices.empty()) return true;
+
+    // Usar o primeiro vértice como ponto de partida
+    size_t start_vertex = vertices[0];
+    std::unordered_set<size_t> visited;
+    std::queue<size_t> q;
+    q.push(start_vertex);
+    visited.insert(start_vertex);
+
+    while (!q.empty()) {
+        size_t current = q.front();
+        q.pop();
+
+        for (const auto& vertex : vertices) {
+            if (vertex != current && visited.find(vertex) == visited.end() &&
+                conected(current, vertex)) {
+                q.push(vertex);
+                visited.insert(vertex);
+            }
+        }
+    }
+
+    // Verificar se todos os vértices foram visitados
+    return visited.size() == vertices.size();
+}
+
