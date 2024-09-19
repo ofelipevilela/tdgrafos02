@@ -253,9 +253,9 @@ float Graph::guloso(size_t p) {
     for (size_t i = 0; i < subgraphs.size(); ++i) {
         vector<size_t> to_relocate;  // Lista de vértices a realocar
 
-        // Verificar conectividade dentro do subgrafo
+        // Verificar conectividade do subgrafo
         if (!check_connected(subgraphs[i].vertices)) {
-            // Se o subgrafo não é conexo, identificar vértices a realocar
+            // Se o subgrafo nao é conexo, identificar e realocar
             for (size_t j = 0; j < subgraphs[i].vertices.size(); ++j) {
                 bool is_connected = false;
                 for (size_t k = 0; k < subgraphs[i].vertices.size(); ++k) {
@@ -269,11 +269,11 @@ float Graph::guloso(size_t p) {
                 }
             }
 
-            // Realocar vértices que não estão conectados
+            // Realocar se nao estao conectados
             for (size_t vertex_id : to_relocate) {
                 subgraphs[i].vertices.erase(remove(subgraphs[i].vertices.begin(), subgraphs[i].vertices.end(), vertex_id), subgraphs[i].vertices.end());
 
-                // Tentar encontrar outro subgrafo onde o vértice tenha conectividade
+                // Tentar encontrar outro subgrafo onde o vertice seja conexo
                 bool relocated = false;
                 for (size_t j = 0; j < subgraphs.size(); ++j) {
                     if (j != i) {
@@ -293,7 +293,7 @@ float Graph::guloso(size_t p) {
                     }
                 }
 
-                // Se não encontrar subgrafo com conectividade, adiciona ao subgrafo com menor peso total
+                // Se nao encontrar subgrafo conexo, adiciona ao subgrafo com menor peso total
                 if (!relocated) {
                     auto least_filled_subgraph = min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
                         return a.total_weight < b.total_weight;
@@ -332,7 +332,7 @@ Node* Graph::find_node(size_t id) {
     return nullptr; // Nó não encontrado
 }
 
-// Adicione este método à classe Graph para calcular o gap de um subgrafo
+// Gap de um subgrafo
 float Graph::gap(const Subgraph& subgraph) {
     if (subgraph.vertices.empty()) {
         return 0.0f;
@@ -393,7 +393,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha_initial) {
     float alpha = alpha_initial;
     float best_gap = numeric_limits<float>::max();
 
-    for (size_t iteration = 0; iteration < 10; ++iteration) { // Execute o GRASP várias vezes para encontrar a melhor solução
+    for (size_t iteration = 0; iteration < 10; ++iteration) { // Executa o GRASP várias vezes para encontrar a melhor solução
         fill(subgraph_weights.begin(), subgraph_weights.end(), 0.0f);
         for (auto& sg : subgraphs) {
             sg.vertices.clear();
@@ -453,7 +453,6 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha_initial) {
         }
 
         // Ajuste dinâmico de alpha
-        // Exemplo de ajuste dinâmico com base na iteração
         alpha = alpha_initial * (0.5f / (iteration + 1));
         cout << "Alpha escolhido: " << alpha << endl;
 
