@@ -10,6 +10,7 @@ struct Subgraph {
     std::vector<size_t> vertices; // Vértices no subgrafo
     float max_weight;             // Maior peso no subgrafo
     float min_weight;             // Menor peso no subgrafo
+    float total_weight;
 
     Subgraph() : max_weight(0), min_weight(0) {}
 };
@@ -36,7 +37,8 @@ public:
     size_t _num_clusters; // Adiciona esta linha para armazenar o número de clusters
     float gap(const Subgraph& subgraph);
     float guloso(size_t p);
-    
+    Node* find_node(size_t id);
+
     bool are_connected(size_t vertex1, size_t vertex2);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
