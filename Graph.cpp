@@ -342,7 +342,7 @@ float Graph::gap(const Subgraph& subgraph) {
 }
 
 // Algoritmo guloso randomizado adaptativo (GRASP) para particionar o grafo e minimizar o gap
-float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
+float Graph::guloso_randomizado_adaptativo(size_t p, float alpha_initial) {
     if (p <= 1 || p > _number_of_nodes) {
         cerr << "Erro: número inválido de subgrafos (" << p << "). Deve ser maior que 1 e menor ou igual ao número de vértices." << endl;
         return -1;
@@ -390,119 +390,127 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
         return conected(id1, id2) == 1;
     };
 
-    for (const auto& vertex : vertices) {
-        size_t vertex_id = vertex.first;
-        float vertex_weight = vertex.second;
+    float alpha = alpha_initial;
+    float best_gap = numeric_limits<float>::max();
 
-        vector<pair<size_t, float>> lcr;
-        for (size_t j = 0; j < p; ++j) {
-            bool can_add = true;
-            for (size_t k = 0; k < subgraphs[j].vertices.size(); ++k) {
-                size_t existing_vertex_id = subgraphs[j].vertices[k];
-                if (!are_connected(vertex_id, existing_vertex_id)) {
-                    can_add = false;
-                    break;
-                }
-            }
-
-            if (can_add) {
-                float new_weight = subgraph_weights[j] + vertex_weight;
-                float weight_gap = abs(new_weight - ideal_weight_per_subgraph);
-                lcr.push_back({j, weight_gap});
-            }
+    for (size_t iteration = 0; iteration < 10; ++iteration) { // Execute o GRASP várias vezes para encontrar a melhor solução
+        fill(subgraph_weights.begin(), subgraph_weights.end(), 0.0f);
+        for (auto& sg : subgraphs) {
+            sg.vertices.clear();
+            sg.max_weight = 0.0f;
+            sg.min_weight = numeric_limits<float>::max();
         }
 
-        if (lcr.empty()) {
-            // Se nenhum subgrafo pode adicionar o vértice, escolha o subgrafo com menor peso total
-            size_t least_filled_subgraph = distance(subgraph_weights.begin(), min_element(subgraph_weights.begin(), subgraph_weights.end()));
-            lcr.push_back({least_filled_subgraph, abs(subgraph_weights[least_filled_subgraph] + vertex_weight - ideal_weight_per_subgraph)});
-        }
+        for (const auto& vertex : vertices) {
+            size_t vertex_id = vertex.first;
+            float vertex_weight = vertex.second;
 
-        sort(lcr.begin(), lcr.end(), [](const auto& a, const auto& b) {
-            return a.second < b.second;
-        });
-
-        // Ajustar a escolha com base na probabilidade e aleatoriedade
-        size_t lcr_size = max(size_t(1), size_t(lcr.size() * alpha));
-        uniform_int_distribution<size_t> dist(0, lcr_size - 1);
-        size_t selected_subgraph = lcr[dist(gen)].first;
-
-        subgraphs[selected_subgraph].vertices.push_back(vertex_id);
-        subgraph_weights[selected_subgraph] += vertex_weight;
-        subgraphs[selected_subgraph].max_weight = max(subgraphs[selected_subgraph].max_weight, vertex_weight);
-        subgraphs[selected_subgraph].min_weight = min(subgraphs[selected_subgraph].min_weight, vertex_weight);
-    }
-
-    // Verificação de conectividade e realocação de vértices
-    for (size_t i = 0; i < subgraphs.size(); ++i) {
-        vector<size_t> to_relocate;  // Lista de vértices a realocar
-
-        for (size_t j = 0; j < subgraphs[i].vertices.size(); ++j) {
-            bool is_connected = false;
-            for (size_t k = 0; k < subgraphs[i].vertices.size(); ++k) {
-                if (j != k && are_connected(subgraphs[i].vertices[j], subgraphs[i].vertices[k])) {
-                    is_connected = true;
-                    break;
-                }
-            }
-            if (!is_connected) {
-                to_relocate.push_back(subgraphs[i].vertices[j]);  // Adicionar para realocar
-            }
-        }
-
-        // Realocar vértices que não estão conectados
-        for (size_t vertex_id : to_relocate) {
-            subgraphs[i].vertices.erase(remove(subgraphs[i].vertices.begin(), subgraphs[i].vertices.end(), vertex_id), subgraphs[i].vertices.end());
-
-            // Tentar encontrar outro subgrafo onde o vértice tenha conectividade
-            bool relocated = false;
-            for (size_t j = 0; j < subgraphs.size(); ++j) {
-                if (j != i) {
-                    bool can_add = true;
-                    for (size_t existing_vertex_id : subgraphs[j].vertices) {
-                        if (!are_connected(vertex_id, existing_vertex_id)) {
-                            can_add = false;
-                            break;
-                        }
-                    }
-                    if (can_add) {
-                        subgraphs[j].vertices.push_back(vertex_id);
-                        relocated = true;
+            vector<pair<size_t, float>> lcr;
+            for (size_t j = 0; j < p; ++j) {
+                bool can_add = true;
+                for (size_t k = 0; k < subgraphs[j].vertices.size(); ++k) {
+                    size_t existing_vertex_id = subgraphs[j].vertices[k];
+                    if (!are_connected(vertex_id, existing_vertex_id)) {
+                        can_add = false;
                         break;
                     }
                 }
+
+                if (can_add) {
+                    float new_weight = subgraph_weights[j] + vertex_weight;
+                    float weight_gap = abs(new_weight - ideal_weight_per_subgraph);
+                    lcr.push_back({j, weight_gap});
+                }
             }
 
-            // Se não encontrar subgrafo com conectividade, adiciona ao subgrafo com menor peso
-            if (!relocated) {
+            if (lcr.empty()) {
                 size_t least_filled_subgraph = distance(subgraph_weights.begin(), min_element(subgraph_weights.begin(), subgraph_weights.end()));
-                subgraphs[least_filled_subgraph].vertices.push_back(vertex_id);
+                lcr.push_back({least_filled_subgraph, abs(subgraph_weights[least_filled_subgraph] + vertex_weight - ideal_weight_per_subgraph)});
+            }
+
+            sort(lcr.begin(), lcr.end(), [](const auto& a, const auto& b) {
+                return a.second < b.second;
+            });
+
+            size_t lcr_size = max(size_t(1), size_t(lcr.size() * alpha));
+            uniform_int_distribution<size_t> dist(0, lcr_size - 1);
+            size_t selected_subgraph = lcr[dist(gen)].first;
+
+            subgraphs[selected_subgraph].vertices.push_back(vertex_id);
+            subgraph_weights[selected_subgraph] += vertex_weight;
+            subgraphs[selected_subgraph].max_weight = max(subgraphs[selected_subgraph].max_weight, vertex_weight);
+            subgraphs[selected_subgraph].min_weight = min(subgraphs[selected_subgraph].min_weight, vertex_weight);
+        }
+
+        float total_gap = 0;
+        for (size_t i = 0; i < subgraphs.size(); ++i) {
+            float subgraph_gap = gap(subgraphs[i]);
+            total_gap += subgraph_gap;
+        }
+
+        if (total_gap < best_gap) {
+            best_gap = total_gap;
+        }
+
+        // Ajuste dinâmico de alpha
+        // Exemplo de ajuste dinâmico com base na iteração
+        alpha = alpha_initial * (0.5f / (iteration + 1));
+        cout << "Alpha escolhido: " << alpha << endl;
+
+        // Pós-processamento: Troca de vértices para melhorar a solução
+        for (size_t i = 0; i < p; ++i) {
+            vector<size_t> to_relocate;
+            for (size_t j = 0; j < subgraphs[i].vertices.size(); ++j) {
+                bool is_connected = false;
+                for (size_t k = 0; k < subgraphs[i].vertices.size(); ++k) {
+                    if (j != k && are_connected(subgraphs[i].vertices[j], subgraphs[i].vertices[k])) {
+                        is_connected = true;
+                        break;
+                    }
+                }
+                if (!is_connected) {
+                    to_relocate.push_back(subgraphs[i].vertices[j]);
+                }
+            }
+
+            for (size_t vertex_id : to_relocate) {
+                subgraphs[i].vertices.erase(remove(subgraphs[i].vertices.begin(), subgraphs[i].vertices.end(), vertex_id), subgraphs[i].vertices.end());
+
+                bool relocated = false;
+                for (size_t j = 0; j < p; ++j) {
+                    if (j != i) {
+                        bool can_add = true;
+                        for (size_t existing_vertex_id : subgraphs[j].vertices) {
+                            if (!are_connected(vertex_id, existing_vertex_id)) {
+                                can_add = false;
+                                break;
+                            }
+                        }
+                        if (can_add) {
+                            subgraphs[j].vertices.push_back(vertex_id);
+                            relocated = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!relocated) {
+                    size_t least_filled_subgraph = distance(subgraph_weights.begin(), min_element(subgraph_weights.begin(), subgraph_weights.end()));
+                    subgraphs[least_filled_subgraph].vertices.push_back(vertex_id);
+                }
             }
         }
     }
 
-    float total_gap = 0;
-    cout << "Calculando o gap total...\n";
-    for (size_t i = 0; i < subgraphs.size(); ++i) {
-        float subgraph_gap = gap(subgraphs[i]);
-
-        cout << "Subgrafo " << i + 1 << " (Vértices: ";
-        for (size_t vertex : subgraphs[i].vertices) {
-            cout << vertex << " ";
-        }
-        cout << ") - Gap: " << subgraph_gap << endl;
-
-        total_gap += subgraph_gap;
-    }
-
-    cout << "Gap total calculado: " << total_gap << endl;
-    
     auto end = chrono::high_resolution_clock::now();
     chrono::duration<double> elapsed = end - start;
     cout << "Tempo total de execução: " << elapsed.count() << " segundos." << endl;
+    cout << "Melhor gap encontrado: " << best_gap << endl;
 
-    return total_gap;
+
+    return best_gap;
 }
+
 
 
 // Algoritmo guloso randomizado adaptativo Reativo

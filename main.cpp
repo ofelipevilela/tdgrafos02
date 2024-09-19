@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
                 float alpha;
                 cout << "Quanto menor o alpha, mais guloso o algoritmo se torna; quanto maior, mais aleatoriedade." << endl;
                 //cout << "Digite o valor de alpha (0 <= alpha <= 1): ";
-                cout << "Vamos considerar alpha = 0.5 " << endl;
+                //cout << "Vamos considerar alpha = 0.5 " << endl;
                 //cin >> alpha;
                 auto start = chrono::high_resolution_clock::now();
                 float total_gap = graph.guloso_randomizado_adaptativo(p, 0.5);
