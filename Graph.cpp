@@ -404,6 +404,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
                     break;
                 }
             }
+
             if (can_add) {
                 float new_weight = subgraph_weights[j] + vertex_weight;
                 float weight_gap = abs(new_weight - ideal_weight_per_subgraph);
@@ -421,6 +422,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
             return a.second < b.second;
         });
 
+        // Ajustar a escolha com base na probabilidade e aleatoriedade
         size_t lcr_size = max(size_t(1), size_t(lcr.size() * alpha));
         uniform_int_distribution<size_t> dist(0, lcr_size - 1);
         size_t selected_subgraph = lcr[dist(gen)].first;
@@ -501,6 +503,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
 
     return total_gap;
 }
+
 
 // Algoritmo guloso randomizado adaptativo Reativo
 float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
