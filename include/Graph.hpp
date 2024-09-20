@@ -38,7 +38,9 @@ public:
     float gap(const Subgraph& subgraph);
     float guloso(size_t p);
     Node* find_node(size_t id);
-
+    bool is_connected_subgraph(const std::vector<size_t>& vertices);
+    bool can_remove_vertex(const std::vector<size_t>& vertices, size_t vertex_to_remove); // Certifique-se de usar std::vector
+    
     bool are_connected(size_t vertex1, size_t vertex2);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
