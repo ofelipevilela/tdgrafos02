@@ -61,16 +61,16 @@ int main(int argc, char* argv[]) {
                 break;
             }
             case 3: {
-                // size_t p = graph._num_clusters;
-                // size_t max_iter;
-                // cout << "Digite o número de iterações para o algoritmo reativo: ";
-                // cin >> max_iter;
-                // auto start = chrono::high_resolution_clock::now();
-                // float total_gap = graph.guloso_randomizado_adaptativo_reativo(p, max_iter);
-                // auto end = chrono::high_resolution_clock::now();
-                // chrono::duration<double> elapsed = end - start;
-                // cout << "Gap total (Guloso Randomizado Adaptativo Reativo): " << total_gap << endl;
-                // cout << "Tempo de execução (Guloso Randomizado Adaptativo Reativo): " << elapsed.count() << " segundos\n";
+                size_t p = graph._num_clusters;
+                size_t max_iter;
+                cout << "Digite o número de iterações para o algoritmo reativo: ";
+                cin >> max_iter;
+                auto start = chrono::high_resolution_clock::now();
+                float total_gap = graph.guloso_randomizado_adaptativo_reativo(p, max_iter);
+                auto end = chrono::high_resolution_clock::now();
+                chrono::duration<double> elapsed = end - start;
+                cout << "Gap total (Guloso Randomizado Adaptativo Reativo): " << total_gap << endl;
+                cout << "Tempo de execução (Guloso Randomizado Adaptativo Reativo): " << elapsed.count() << " segundos\n";
                 break;
             }
             case 4: {

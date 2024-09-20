@@ -469,6 +469,144 @@ next_vertex: ; // Marca o ponto de saída do loop
     return total_gap;
 }
 
+float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
+    if (p > _number_of_nodes) {
+        cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
+        return -1;
+    }
+
+    vector<Subgraph> best_subgraphs(p);
+    vector<float> alphas = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f}; // Lista de alphas predefinidos
+    size_t iter = 0;
+    float total_gap = numeric_limits<float>::max();
+    vector<float> gaps_per_alpha(alphas.size(), 0);
+    vector<size_t> counts_per_alpha(alphas.size(), 0);
+    vector<float> performance(alphas.size(), numeric_limits<float>::max());
+
+    while (iter < max_iter) {
+        vector<Subgraph> subgraphs(p);
+        unordered_set<size_t> visited;
+        vector<Node*> nodes;
+
+        Node* current = _first;
+        while (current) {
+            nodes.push_back(current);
+            current = current->_next_node;
+        }
+
+        size_t cluster_size = _number_of_nodes / p;
+
+        for (size_t i = 0; i < p && !nodes.empty(); ++i) {
+            vector<size_t> vertices_in_subgraph;
+            stack<size_t> s;
+
+            size_t start_index = rand() % nodes.size();
+            while (visited.find(nodes[start_index]->_id) != visited.end()) {
+                start_index = (start_index + 1) % nodes.size();
+            }
+
+            s.push(nodes[start_index]->_id);
+            
+            while (!s.empty() && vertices_in_subgraph.size() < cluster_size) {
+                size_t current_id = s.top();
+                s.pop();
+
+                if (visited.find(current_id) == visited.end()) {
+                    visited.insert(current_id);
+                    vertices_in_subgraph.push_back(current_id);
+
+                    vector<pair<size_t, float>> RCL;
+                    Node* current_node = find_node(current_id);
+                    Edge* edge = current_node->_first_edge;
+
+                    while (edge) {
+                        if (visited.find(edge->_target_id) == visited.end()) {
+                            Node* target_node = find_node(edge->_target_id);
+                            RCL.emplace_back(edge->_target_id, target_node->_weight);
+                        }
+                        edge = edge->_next_edge;
+                    }
+
+                    float max_weight = -numeric_limits<float>::infinity();
+                    for (const auto& candidate : RCL) {
+                        max_weight = max(max_weight, candidate.second);
+                    }
+
+                    vector<pair<size_t, float>> filtered_RCL;
+                    for (const auto& candidate : RCL) {
+                        if (candidate.second >= max_weight * 0.1f) {
+                            filtered_RCL.push_back(candidate);
+                        }
+                    }
+
+                    if (!filtered_RCL.empty()) {
+                        size_t rcl_index = rand() % filtered_RCL.size();
+                        s.push(filtered_RCL[rcl_index].first);
+                    }
+                }
+            }
+
+            Subgraph& current_subgraph = subgraphs[i];
+            current_subgraph.vertices = vertices_in_subgraph;
+
+            for (size_t vertex_id : vertices_in_subgraph) {
+                Node* node = find_node(vertex_id);
+                current_subgraph.total_weight += node->_weight;
+                current_subgraph.max_weight = max(current_subgraph.max_weight, node->_weight);
+                current_subgraph.min_weight = min(current_subgraph.min_weight, node->_weight);
+            }
+        }
+
+        float current_gap = 0;
+        cout << "Iteração " << iter + 1 << endl;
+        for (size_t i = 0; i < p; ++i) {
+            float subgraph_gap = gap(subgraphs[i]);
+            if (std::isnan(subgraph_gap) || std::isinf(subgraph_gap)) {
+                cerr << "Erro: gap inválido calculado para o subgrafo " << i + 1 << ".\n";
+                return -1;
+            }
+            current_gap += subgraph_gap;
+
+            cout << "Subgrafo " << (i + 1) << " (Vértices: ";
+            for (size_t vertex : subgraphs[i].vertices) {
+                cout << vertex << " ";
+            }
+            cout << ") - Gap: " << subgraph_gap << endl;
+        }
+        cout << "Gap total: " << current_gap << endl;
+
+        // Atualizar o desempenho do alpha
+        size_t alpha_index = rand() % alphas.size();
+        gaps_per_alpha[alpha_index] += current_gap;
+        counts_per_alpha[alpha_index]++;
+
+        if (current_gap < total_gap) {
+            total_gap = current_gap;
+            best_subgraphs = subgraphs; // Armazenar a melhor solução
+        }
+
+        iter++;
+    }
+
+    // Impressão dos melhores subgrafos encontrados
+    cout << "Melhores subgrafos encontrados:\n";
+    for (size_t i = 0; i < best_subgraphs.size(); ++i) {
+        cout << "Subgrafo " << (i + 1) << " (Vértices: ";
+        for (size_t vertex : best_subgraphs[i].vertices) {
+            cout << vertex << " ";
+        }
+        float subgraph_gap = gap(best_subgraphs[i]);
+        if (std::isnan(subgraph_gap) || std::isinf(subgraph_gap)) {
+            cerr << "Erro: gap inválido calculado para o subgrafo " << i + 1 << ".\n";
+            return -1;
+        }
+        cout << ") - Gap: " << subgraph_gap << endl;
+    }
+    cout << "Gap total final: " << total_gap << endl;
+
+    return total_gap;
+}
+
 
 
 // Algoritmo guloso randomizado adaptativo Reativo
