@@ -43,6 +43,7 @@ public:
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
     bool check_connected(const std::vector<size_t>& vertices); // Certifique-se de usar std::vector
+    
 
 private:
     size_t _number_of_nodes;
@@ -52,6 +53,9 @@ private:
     bool   _weighted_nodes;
     Node  *_first;
     Node  *_last;
+
+    // Adicione um vetor para armazenar os subgrafos
+    std::vector<Subgraph> subgraphs;
 };
 
 #endif  //GRAPH_HPP

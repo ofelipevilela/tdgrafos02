@@ -234,14 +234,27 @@ float Graph::guloso(size_t p) {
         bool added = false;
         for (auto& subgraph : subgraphs) {
             if (subgraph.vertices.empty() || check_connected(subgraph.vertices)) {
-                subgraph.vertices.push_back(node->_id);
-                subgraph.total_weight += node->_weight;
-                subgraph.max_weight = max(subgraph.max_weight, node->_weight);
-                subgraph.min_weight = min(subgraph.min_weight, node->_weight);
-                added = true;
-                break;
+                // Verificar se o nó é vizinho de algum vértice existente no subgrafo
+                bool is_neighbor = false;
+                for (size_t existing_vertex : subgraph.vertices) {
+                    if (conected(node->_id, existing_vertex)) {
+                        is_neighbor = true;
+                        break;
+                    }
+                }
+
+                // Se for vizinho, adicionar ao subgrafo
+                if (is_neighbor) {
+                    subgraph.vertices.push_back(node->_id);
+                    subgraph.total_weight += node->_weight;
+                    subgraph.max_weight = max(subgraph.max_weight, node->_weight);
+                    subgraph.min_weight = min(subgraph.min_weight, node->_weight);
+                    added = true;
+                    break;
+                }
             }
         }
+
         // Se não foi possível adicionar, criar um novo subgrafo
         if (!added) {
             auto& least_filled_subgraph = *min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
@@ -273,32 +286,59 @@ float Graph::guloso(size_t p) {
 
             // Realocar vértices desconexos
             for (size_t vertex_id : to_relocate) {
-                // Remover do subgrafo de origem e atualizar o peso
-                subgraphs[i].vertices.erase(remove(subgraphs[i].vertices.begin(), subgraphs[i].vertices.end(), vertex_id), subgraphs[i].vertices.end());
-                subgraphs[i].total_weight -= find_node(vertex_id)->_weight;
+                // Verificar se a remoção mantém o subgrafo conectado
+                vector<size_t> temp_vertices = subgraphs[i].vertices;
+                temp_vertices.erase(remove(temp_vertices.begin(), temp_vertices.end(), vertex_id), temp_vertices.end());
 
-                // Tentar encontrar um subgrafo conectado
-                bool relocated = false;
-                for (size_t j = 0; j < subgraphs.size(); ++j) {
-                    if (j != i && check_connected({vertex_id})) {
-                        subgraphs[j].vertices.push_back(vertex_id);
-                        subgraphs[j].total_weight += find_node(vertex_id)->_weight;
-                        relocated = true;
-                        break;
+                if (check_connected(temp_vertices)) {
+                    // Remover do subgrafo de origem e atualizar o peso
+                    subgraphs[i].vertices.erase(remove(subgraphs[i].vertices.begin(), subgraphs[i].vertices.end(), vertex_id), subgraphs[i].vertices.end());
+                    subgraphs[i].total_weight -= find_node(vertex_id)->_weight;
+
+                    // Tentar encontrar um subgrafo conectado
+                    bool relocated = false;
+                    for (size_t j = 0; j < subgraphs.size(); ++j) {
+                        if (j != i) {
+                            // Verificar se o vértice é vizinho de algum vértice do subgrafo de destino
+                            for (size_t target_vertex : subgraphs[j].vertices) {
+                                if (conected(vertex_id, target_vertex)) {
+                                    subgraphs[j].vertices.push_back(vertex_id);
+                                    subgraphs[j].total_weight += find_node(vertex_id)->_weight;
+                                    relocated = true;
+                                    break; // Sai do loop ao encontrar um destino
+                                }
+                            }
+                            if (relocated) break; // Sai do loop de subgrafos se realocado
+                        }
                     }
-                }
 
-                // Se não encontrar um subgrafo conectado, adicionar ao subgrafo com menor peso total
-                if (!relocated) {
-                    auto least_filled_subgraph = min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
-                        return a.total_weight < b.total_weight;
-                    });
-                    least_filled_subgraph->vertices.push_back(vertex_id);
-                    least_filled_subgraph->total_weight += find_node(vertex_id)->_weight;
+                    // Se não encontrar um subgrafo conectado, tentar realocar novamente verificando todas as conexões
+                    if (!relocated) {
+                        for (size_t j = 0; j < subgraphs.size(); ++j) {
+                            if (j != i) {
+                                for (size_t target_vertex : subgraphs[j].vertices) {
+                                    if (conected(vertex_id, target_vertex)) {
+                                        subgraphs[j].vertices.push_back(vertex_id);
+                                        subgraphs[j].total_weight += find_node(vertex_id)->_weight;
+                                        relocated = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (relocated) break;
+                        }
+                    }
+
+                    // Se ainda não conseguir realocar, pode-se tomar outra ação
+                    if (!relocated) {
+                        // Aqui você pode decidir o que fazer, talvez ignorar ou manter em uma lista separada
+                        // Ou adicionar ao subgrafo de menor peso se for apropriado
+                    }
                 }
             }
         }
     }
+
 
     // Calcular e imprimir o gap para cada subgrafo
     float total_gap = 0;
@@ -314,6 +354,7 @@ float Graph::guloso(size_t p) {
     cout << "Gap total calculado: " << total_gap << endl;
     return total_gap;
 }
+
 
 
 
@@ -648,4 +689,5 @@ bool Graph::check_connected(const vector<size_t>& vertices) {
 
     return all_visited;
 }
+
 
