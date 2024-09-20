@@ -202,7 +202,6 @@ int Graph::conected(size_t node_id_1, size_t node_id_2) {
 
 
 
-
 /// GULOSO
 float Graph::guloso(size_t p) {
     if (p > _number_of_nodes) {
@@ -229,16 +228,8 @@ float Graph::guloso(size_t p) {
         subgraph.total_weight = 0.0f;
     }
 
-    // Inicializar a soma total de pesos e a soma média de pesos por subgrafo
-    float total_weight = 0;
+    // Distribuir os vértices
     for (const Node* node : nodes) {
-        total_weight += node->_weight;
-    }
-    float avg_weight = total_weight / p;
-
-    // Distribuir os vértices para balancear a soma de pesos
-    for (const Node* node : nodes) {
-        // Escolher o subgrafo com a menor soma total de pesos
         auto min_weight_subgraph = min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
             return a.total_weight < b.total_weight;
         });
@@ -249,51 +240,42 @@ float Graph::guloso(size_t p) {
         min_weight_subgraph->min_weight = min(min_weight_subgraph->min_weight, node->_weight);
     }
 
-    // Verificação de conectividade e realocação de vértices
+    // Verificação de conectividade e realocação
     for (size_t i = 0; i < subgraphs.size(); ++i) {
-        vector<size_t> to_relocate;  // Lista de vértices a realocar
+        vector<size_t> to_relocate;
 
-        // Verificar conectividade do subgrafo
         if (!check_connected(subgraphs[i].vertices)) {
-            // Se o subgrafo nao é conexo, identificar e realocar
-            for (size_t j = 0; j < subgraphs[i].vertices.size(); ++j) {
+            for (size_t vertex : subgraphs[i].vertices) {
                 bool is_connected = false;
-                for (size_t k = 0; k < subgraphs[i].vertices.size(); ++k) {
-                    if (j != k && conected(subgraphs[i].vertices[j], subgraphs[i].vertices[k])) {
+                for (size_t other_vertex : subgraphs[i].vertices) {
+                    if (vertex != other_vertex && conected(vertex, other_vertex)) {
                         is_connected = true;
                         break;
                     }
                 }
                 if (!is_connected) {
-                    to_relocate.push_back(subgraphs[i].vertices[j]);  // Adicionar para realocar
+                    to_relocate.push_back(vertex);
                 }
             }
 
-            // Realocar se nao estao conectados
+            // Realocar vértices desconexos
             for (size_t vertex_id : to_relocate) {
+                // Remover do subgrafo de origem e atualizar o peso
                 subgraphs[i].vertices.erase(remove(subgraphs[i].vertices.begin(), subgraphs[i].vertices.end(), vertex_id), subgraphs[i].vertices.end());
+                subgraphs[i].total_weight -= find_node(vertex_id)->_weight;
 
-                // Tentar encontrar outro subgrafo onde o vertice seja conexo
+                // Tentar encontrar um subgrafo conectado
                 bool relocated = false;
                 for (size_t j = 0; j < subgraphs.size(); ++j) {
-                    if (j != i) {
-                        bool can_add = true;
-                        for (size_t existing_vertex_id : subgraphs[j].vertices) {
-                            if (!conected(vertex_id, existing_vertex_id)) {
-                                can_add = false;
-                                break;
-                            }
-                        }
-                        if (can_add) {
-                            subgraphs[j].vertices.push_back(vertex_id);
-                            subgraphs[j].total_weight += find_node(vertex_id)->_weight;
-                            relocated = true;
-                            break;
-                        }
+                    if (j != i && check_connected({vertex_id})) {
+                        subgraphs[j].vertices.push_back(vertex_id);
+                        subgraphs[j].total_weight += find_node(vertex_id)->_weight;
+                        relocated = true;
+                        break;
                     }
                 }
 
-                // Se nao encontrar subgrafo conexo, adiciona ao subgrafo com menor peso total
+                // Se não encontrar um subgrafo conectado, adicionar ao subgrafo com menor peso total
                 if (!relocated) {
                     auto least_filled_subgraph = min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
                         return a.total_weight < b.total_weight;
@@ -302,6 +284,13 @@ float Graph::guloso(size_t p) {
                     least_filled_subgraph->total_weight += find_node(vertex_id)->_weight;
                 }
             }
+        }
+    }
+
+    // Verificação de conectividade final
+    for (size_t i = 0; i < subgraphs.size(); ++i) {
+        if (!check_connected(subgraphs[i].vertices)) {
+            //cout << "Subgrafo " << (i + 1) << " ainda não é conexo após a realocação!" << endl;
         }
     }
 
@@ -319,6 +308,10 @@ float Graph::guloso(size_t p) {
     cout << "Gap total calculado: " << total_gap << endl;
     return total_gap;
 }
+
+
+
+
 
 
 Node* Graph::find_node(size_t id) {
@@ -601,30 +594,56 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     return best_gap; // Retorna o melhor gap encontrado
 }
 
+bool Graph::check_connected(const vector<size_t>& vertices) {
+    if (vertices.empty()) return true; // Subgrafo vazio é considerado conexo
 
-bool Graph::check_connected(const std::vector<size_t>& vertices) {
-    if (vertices.empty()) return true;
+    // Mapeia os vértices em um conjunto para acesso rápido
+    unordered_set<size_t> vertex_set(vertices.begin(), vertices.end());
+    if (vertex_set.empty()) return true;
 
-    // Usar o primeiro vértice como ponto de partida
-    size_t start_vertex = vertices[0];
-    std::unordered_set<size_t> visited;
-    std::queue<size_t> q;
-    q.push(start_vertex);
-    visited.insert(start_vertex);
+    // Usar uma busca em profundidade (DFS) para verificar conectividade
+    unordered_set<size_t> visited;
+    stack<size_t> s;
 
-    while (!q.empty()) {
-        size_t current = q.front();
-        q.pop();
+    // Começa a partir do primeiro vértice do subgrafo
+    s.push(vertices[0]);
+    visited.insert(vertices[0]);
 
-        for (const auto& vertex : vertices) {
-            if (vertex != current && visited.find(vertex) == visited.end() &&
-                conected(current, vertex)) {
-                q.push(vertex);
-                visited.insert(vertex);
+    while (!s.empty()) {
+        size_t current_id = s.top();
+        s.pop();
+
+        Node* current_node = find_node(current_id);
+        if (!current_node) continue;
+
+        // Explora todos os vizinhos do nó atual
+        for (Edge* edge = current_node->_first_edge; edge; edge = edge->_next_edge) {
+            if (vertex_set.find(edge->_target_id) != vertex_set.end() && visited.find(edge->_target_id) == visited.end()) {
+                visited.insert(edge->_target_id);
+                s.push(edge->_target_id);
+                // Mensagem de depuração para verificar quais vértices estão sendo visitados
+                cout << "Visitando vértice: " << edge->_target_id << endl;
             }
         }
     }
 
-    // Verificar se todos os vértices foram visitados
-    return visited.size() == vertices.size();
+    // Verifica se todos os vértices foram visitados
+    bool all_visited = (visited.size() == vertex_set.size());
+
+    // Mensagem de depuração para verificar se todos os vértices foram visitados
+    cout << "Vértices do subgrafo: ";
+    for (const auto& v : vertex_set) {
+        cout << v << " ";
+    }
+    cout << endl;
+
+    cout << "Vértices visitados: ";
+    for (const auto& v : visited) {
+        cout << v << " ";
+    }
+    cout << endl;
+
+    return all_visited;
 }
+
+
