@@ -628,4 +628,3 @@ bool Graph::check_connected(const std::vector<size_t>& vertices) {
     // Verificar se todos os vértices foram visitados
     return visited.size() == vertices.size();
 }
-
