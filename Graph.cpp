@@ -228,23 +228,36 @@ float Graph::guloso(size_t p) {
         subgraph.total_weight = 0.0f;
     }
 
-    // Distribuir os vértices
+    // Distribuir os vértices priorizando a conectividade
     for (const Node* node : nodes) {
-        auto min_weight_subgraph = min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
-            return a.total_weight < b.total_weight;
-        });
-
-        min_weight_subgraph->vertices.push_back(node->_id);
-        min_weight_subgraph->total_weight += node->_weight;
-        min_weight_subgraph->max_weight = max(min_weight_subgraph->max_weight, node->_weight);
-        min_weight_subgraph->min_weight = min(min_weight_subgraph->min_weight, node->_weight);
+        // Adicionar o vértice ao subgrafo que é conexo, se possível
+        bool added = false;
+        for (auto& subgraph : subgraphs) {
+            if (subgraph.vertices.empty() || check_connected(subgraph.vertices)) {
+                subgraph.vertices.push_back(node->_id);
+                subgraph.total_weight += node->_weight;
+                subgraph.max_weight = max(subgraph.max_weight, node->_weight);
+                subgraph.min_weight = min(subgraph.min_weight, node->_weight);
+                added = true;
+                break;
+            }
+        }
+        // Se não foi possível adicionar, criar um novo subgrafo
+        if (!added) {
+            auto& least_filled_subgraph = *min_element(subgraphs.begin(), subgraphs.end(), [](const Subgraph& a, const Subgraph& b) {
+                return a.total_weight < b.total_weight;
+            });
+            least_filled_subgraph.vertices.push_back(node->_id);
+            least_filled_subgraph.total_weight += node->_weight;
+            least_filled_subgraph.max_weight = max(least_filled_subgraph.max_weight, node->_weight);
+            least_filled_subgraph.min_weight = min(least_filled_subgraph.min_weight, node->_weight);
+        }
     }
 
     // Verificação de conectividade e realocação
     for (size_t i = 0; i < subgraphs.size(); ++i) {
-        vector<size_t> to_relocate;
-
         if (!check_connected(subgraphs[i].vertices)) {
+            vector<size_t> to_relocate;
             for (size_t vertex : subgraphs[i].vertices) {
                 bool is_connected = false;
                 for (size_t other_vertex : subgraphs[i].vertices) {
@@ -287,13 +300,6 @@ float Graph::guloso(size_t p) {
         }
     }
 
-    // Verificação de conectividade final
-    for (size_t i = 0; i < subgraphs.size(); ++i) {
-        if (!check_connected(subgraphs[i].vertices)) {
-            //cout << "Subgrafo " << (i + 1) << " ainda não é conexo após a realocação!" << endl;
-        }
-    }
-
     // Calcular e imprimir o gap para cada subgrafo
     float total_gap = 0;
     for (size_t i = 0; i < p; ++i) {
@@ -308,9 +314,6 @@ float Graph::guloso(size_t p) {
     cout << "Gap total calculado: " << total_gap << endl;
     return total_gap;
 }
-
-
-
 
 
 
@@ -645,5 +648,4 @@ bool Graph::check_connected(const vector<size_t>& vertices) {
 
     return all_visited;
 }
-
 
