@@ -300,30 +300,6 @@ float Graph::guloso(size_t p) {
 }
 
 
-// Função para verificar se um subgrafo é conexo
-bool Graph::check_connected(const vector<size_t>& vertices) {
-    if (vertices.empty()) return false;
-
-    unordered_set<size_t> visited;
-    stack<size_t> s;
-    s.push(vertices[0]); // Começa a busca a partir do primeiro vértice
-    visited.insert(vertices[0]);
-
-    while (!s.empty()) {
-        size_t current = s.top();
-        s.pop();
-
-        for (const size_t neighbor : vertices) {
-            if (conected(current, neighbor) && visited.find(neighbor) == visited.end()) {
-                visited.insert(neighbor);
-                s.push(neighbor);
-            }
-        }
-    }
-
-    return visited.size() == vertices.size(); // Verifica se todos os vértices foram visitados
-}
-
 /// GULOSO RANDOMIZADO ADAPTATIVO
 float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     if (p > _number_of_nodes) {
@@ -339,44 +315,47 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     }
 
     unordered_set<size_t> visited;
-    vector<Node*> nodes;
-
+    unordered_map<size_t, Node*> node_map;
+    
     Node* current = _first;
     while (current) {
-        nodes.push_back(current);
+        node_map[current->_id] = current;
         current = current->_next_node;
     }
 
     size_t cluster_size = _number_of_nodes / p;
+    size_t remaining_nodes = _number_of_nodes;
 
-    // Primeira fase: alocar vértices em subgrafos
-    for (size_t i = 0; i < p && !nodes.empty(); ++i) {
+    // Primeira fase: alocar vértices em subgrafos com balanceamento
+    for (size_t i = 0; i < p && !node_map.empty(); ++i) {
         vector<size_t> vertices_in_subgraph;
         stack<size_t> s;
 
-        size_t start_index = rand() % nodes.size();
-        while (visited.find(nodes[start_index]->_id) != visited.end()) {
-            start_index = (start_index + 1) % nodes.size();
-        }
+        // Escolher um nó inicial não visitado aleatoriamente
+        auto it = node_map.begin();
+        advance(it, rand() % node_map.size());
+        size_t start_id = it->first;
 
-        s.push(nodes[start_index]->_id);
+        s.push(start_id);
 
-        while (!s.empty() && vertices_in_subgraph.size() < cluster_size) {
+        while (!s.empty() && vertices_in_subgraph.size() < cluster_size && remaining_nodes > 0) {
             size_t current_id = s.top();
             s.pop();
 
             if (visited.find(current_id) == visited.end()) {
                 visited.insert(current_id);
                 vertices_in_subgraph.push_back(current_id);
+                remaining_nodes--;
 
                 vector<pair<size_t, float>> RCL;
-                Node* current_node = find_node(current_id);
+                Node* current_node = node_map[current_id];
                 Edge* edge = current_node->_first_edge;
                 float max_evaluation = -numeric_limits<float>::infinity();
 
+                // Construir a RCL com base nas conexões do nó atual
                 while (edge) {
                     if (visited.find(edge->_target_id) == visited.end()) {
-                        Node* target_node = find_node(edge->_target_id);
+                        Node* target_node = node_map[edge->_target_id];
                         float evaluation = target_node->_weight;
                         RCL.emplace_back(edge->_target_id, evaluation);
                         max_evaluation = max(max_evaluation, evaluation);
@@ -384,53 +363,55 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
                     edge = edge->_next_edge;
                 }
 
-                vector<pair<size_t, float>> filtered_RCL;
-                for (const auto& candidate : RCL) {
-                    if (candidate.second >= max_evaluation * alpha) {
-                        filtered_RCL.push_back(candidate);
-                    }
-                }
+                if (!RCL.empty()) {
+                    float threshold = max_evaluation * alpha;
+                    auto rcl_end = partition(RCL.begin(), RCL.end(),
+                                            [threshold](const pair<size_t, float>& candidate) {
+                                                return candidate.second >= threshold;
+                                            });
 
-                if (!filtered_RCL.empty()) {
-                    size_t rcl_index = rand() % filtered_RCL.size();
-                    s.push(filtered_RCL[rcl_index].first);
+                    if (rcl_end != RCL.begin()) {
+                        size_t rcl_index = rand() % distance(RCL.begin(), rcl_end);
+                        s.push(RCL[rcl_index].first);
+                    }
                 }
             }
         }
 
+        // Adicionar vértices ao subgrafo atual
         Subgraph& current_subgraph = subgraphs[i];
         current_subgraph.vertices = vertices_in_subgraph;
-
         for (size_t vertex_id : vertices_in_subgraph) {
-            Node* node = find_node(vertex_id);
+            Node* node = node_map[vertex_id];
             current_subgraph.total_weight += node->_weight;
             current_subgraph.max_weight = max(current_subgraph.max_weight, node->_weight);
             current_subgraph.min_weight = min(current_subgraph.min_weight, node->_weight);
+            node_map.erase(vertex_id);
         }
     }
 
-    // Segunda fase: alocar vértices restantes em subgrafos garantindo a conectividade
-    for (Node* node = _first; node; node = node->_next_node) {
-        if (visited.find(node->_id) == visited.end()) {
-            for (auto& subgraph : subgraphs) {
-                if (check_connected(subgraph.vertices)) {
-                    for (size_t vertex_id : subgraph.vertices) {
-                        if (conected(node->_id, vertex_id)) {
-                            subgraph.vertices.push_back(node->_id);
-                            visited.insert(node->_id);
+    // Segunda fase: redistribuição para garantir a homogeneidade
+    for (auto& subgraph : subgraphs) {
+        while (subgraph.vertices.size() < cluster_size && !node_map.empty()) {
+            auto it = node_map.begin();
+            size_t extra_node_id = it->first;
 
-                            subgraph.total_weight += node->_weight;
-                            subgraph.max_weight = max(subgraph.max_weight, node->_weight);
-                            subgraph.min_weight = min(subgraph.min_weight, node->_weight);
-                            goto next_vertex; 
-                        }
-                    }
-                }
+            if (visited.find(extra_node_id) == visited.end()) {
+                subgraph.vertices.push_back(extra_node_id);
+                visited.insert(extra_node_id);
+
+                Node* node = node_map[extra_node_id];
+                subgraph.total_weight += node->_weight;
+                subgraph.max_weight = max(subgraph.max_weight, node->_weight);
+                subgraph.min_weight = min(subgraph.min_weight, node->_weight);
+                node_map.erase(extra_node_id);
+                remaining_nodes--;
             }
         }
-    next_vertex: ; 
     }
 
+
+    // Calcular e imprimir o gap para cada subgrafo
     float total_gap = 0;
     for (size_t i = 0; i < p; ++i) {
         float subgraph_gap = gap(subgraphs[i]);
@@ -444,6 +425,8 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     cout << "Gap total calculado: " << total_gap << endl;
     return total_gap;
 }
+
+
 
 
 /// GULOSO RANDOMIZADO ADAPTATIVO REATIVO
