@@ -33,12 +33,10 @@ public:
     void print_graph(ofstream& output_file);
     void print_graph();
     int conected(size_t node_id_1, size_t node_id_2);
+    // Funcoes do problema
     float gap(const Subgraph& subgraph);
-    float guloso(size_t p);
     Node* find_node(size_t id);
-    bool is_connected_subgraph(const vector<size_t>& vertices);
-    bool can_remove_vertex(const vector<size_t>& vertices, size_t vertex_to_remove); 
-    bool are_connected(size_t vertex1, size_t vertex2);
+    float guloso(size_t p);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
     bool check_connected(const vector<size_t>& vertices); 
