@@ -3,11 +3,12 @@
 
 #include "Node.hpp"
 #include "defines.hpp"
-#include <vector>
+
+using namespace std;
 
 // Declaração da estrutura Subgraph
 struct Subgraph {
-    std::vector<size_t> vertices; // Vértices no subgrafo
+    vector<size_t> vertices; // Vértices no subgrafo
     float max_weight;             // Maior peso no subgrafo
     float min_weight;             // Menor peso no subgrafo
     float total_weight;
@@ -21,31 +22,26 @@ class Graph
 public:
     /*Assinatura dos métodos básicos para o funcionamento da classe*/
 
-    Graph(std::ifstream& instance);
+    Graph(ifstream& instance);
     Graph();
     ~Graph();
-
+    size_t _num_clusters; 
     void remove_node(size_t node_id);
     void remove_edge(size_t node_id_1, size_t node_id_2);
     void add_node(size_t node_id, float weight = 0);
     void add_edge(size_t node_id_1, size_t node_id_2, float weight = 0);
-    void print_graph(std::ofstream& output_file);
+    void print_graph(ofstream& output_file);
     void print_graph();
-
     int conected(size_t node_id_1, size_t node_id_2);
-
-    size_t _num_clusters; // Adiciona esta linha para armazenar o número de clusters
     float gap(const Subgraph& subgraph);
     float guloso(size_t p);
     Node* find_node(size_t id);
-    bool is_connected_subgraph(const std::vector<size_t>& vertices);
-    bool can_remove_vertex(const std::vector<size_t>& vertices, size_t vertex_to_remove); // Certifique-se de usar std::vector
-    
+    bool is_connected_subgraph(const vector<size_t>& vertices);
+    bool can_remove_vertex(const vector<size_t>& vertices, size_t vertex_to_remove); 
     bool are_connected(size_t vertex1, size_t vertex2);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
-    bool check_connected(const std::vector<size_t>& vertices); // Certifique-se de usar std::vector
-    
+    bool check_connected(const vector<size_t>& vertices); 
 
 private:
     size_t _number_of_nodes;
@@ -55,9 +51,8 @@ private:
     bool   _weighted_nodes;
     Node  *_first;
     Node  *_last;
-
     // Adicione um vetor para armazenar os subgrafos
-    std::vector<Subgraph> subgraphs;
+    vector<Subgraph> subgraphs;
 };
 
 #endif  //GRAPH_HPP

@@ -11,5 +11,10 @@
 #include <chrono> // Para medir o tempo
 #include <sstream>
 #include <random> // Para gerar números aleatórios
+#include <queue>
+#include <unordered_set>
+#include <stack>
+#include <set>
+#include <cfloat>
 
 #endif  //DEFINES_HPP   

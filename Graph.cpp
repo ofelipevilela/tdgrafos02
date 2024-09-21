@@ -1,63 +1,56 @@
 #include "include/Graph.hpp"
 #include "include/defines.hpp"
-#include <queue>
-#include <unordered_set>
-#include <stack>
-#include <set>
-#include <vector>
-#include <cfloat>
 
 using namespace std;
 
 // Construtor que lê o arquivo e constrói o grafo
 Graph::Graph(ifstream& instance) : _first(nullptr) {
     string line;
-    // Procurar pela linha com "param p :="
     while (getline(instance, line)) {
         if (line.find("param p") != string::npos) {
             // Ignora "param p :=" e lê o número diretamente
             istringstream param_stream(line);
             string ignore;
             param_stream >> ignore >> ignore >> ignore >> _num_clusters;
-            break; // Já encontramos o número de partições, então podemos sair
+            break; 
         }
     }
 
     // Ler vértices
-    getline(instance, line); // Ignorar linha de comentário
-    getline(instance, line); // set V :=
+    getline(instance, line); 
+    getline(instance, line); 
     while (getline(instance, line) && line.find(';') == string::npos) {
         istringstream vertex_stream(line);
         size_t node_id;
         while (vertex_stream >> node_id) {
-            add_node(node_id, 0.0f); // Inicialmente, peso 0.0f
+            add_node(node_id, 0.0f); 
         }
     }
 
     // Ler pesos dos vértices
-    getline(instance, line); // Ignorar linha de comentário
-    getline(instance, line); // param w :=
+    getline(instance, line); 
+    getline(instance, line); 
     while (getline(instance, line) && line.find(';') == string::npos) {
         istringstream weight_stream(line);
         size_t node_id;
         float weight;
         if (weight_stream >> node_id >> weight) {
-            add_node(node_id, weight); // Atualizar o peso do nó existente
+            add_node(node_id, weight); 
         }
     }
 
     // Ler arestas
-    getline(instance, line); // Ignorar linha de comentário
-    getline(instance, line); // set E :=
+    // Aqui estava o problema, grafo nao direcionado precisa de aresta para cada direção
+    getline(instance, line); 
+    getline(instance, line); 
     while (getline(instance, line) && line.find(';') == string::npos) {
         stringstream ss(line);
         char ignore;
         size_t node_id_1, node_id_2;
 
-        // Ler arestas no formato (n1, n2)
         while (ss >> ignore >> node_id_1 >> ignore >> node_id_2 >> ignore) {
-            add_edge(node_id_1, node_id_2, 0.0f); // Peso padrão 0.0f
-            add_edge(node_id_2, node_id_1, 0.0f); // Adiciona a aresta reversa para garantir que o grafo seja não direcionado
+            add_edge(node_id_1, node_id_2, 0.0f); 
+            add_edge(node_id_2, node_id_1, 0.0f); 
         }
     }
 }
@@ -65,7 +58,6 @@ Graph::Graph(ifstream& instance) : _first(nullptr) {
 Graph::Graph() : _first(nullptr) {}
 
 Graph::~Graph() {
-    // Liberar memória dos nós e arestas
     Node* current_node = _first;
     while (current_node) {
         Node* next_node = current_node->_next_node;
@@ -80,19 +72,15 @@ Graph::~Graph() {
     }
 }
 
-// Função auxiliar para adicionar um nó ao grafo
 void Graph::add_node(size_t node_id, float weight) {
     Node* current = _first;
     while (current) {
         if (current->_id == node_id) {
-            // Atualizar o peso se o nó já existir
             current->_weight = weight;
             return;
         }
         current = current->_next_node;
     }
-
-    // Adicionar novo nó se não existir
     Node* new_node = new Node;
     new_node->_id = node_id;
     new_node->_weight = weight;
@@ -104,12 +92,9 @@ void Graph::add_node(size_t node_id, float weight) {
         _first->_previous_node = new_node;
     }
     _first = new_node;
-
-    // Atualizar o número de nós
     _number_of_nodes++;
 }
 
-// Função auxiliar para adicionar uma aresta ao grafo
 void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
     Node* node1 = _first;
     while (node1 && node1->_id != node_id_1) {
@@ -121,16 +106,14 @@ void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
     }
 
     if (node1 && node2) {
-        // Verifica se a aresta já existe para evitar duplicação em grafos não direcionados
         Edge* edge = node1->_first_edge;
         while (edge) {
-            if (edge->_target_id == node_id_2) {
-                return; // Aresta já existe, não adicionar novamente
+            if (edge->_target_id == node_id_2) { // Verifica se a aresta já existe para evitar duplicação
+                return;
             }
             edge = edge->_next_edge;
         }
 
-        // Caso contrário, adiciona a nova aresta
         Edge* new_edge = new Edge;
         new_edge->_target_id = node_id_2;
         new_edge->_weight = weight;
@@ -139,7 +122,6 @@ void Graph::add_edge(size_t node_id_1, size_t node_id_2, float weight) {
     }
 }
 
-// Imprime o grafo, mostrando vértices, peso e arestas no formato (n1, n2)
 void Graph::print_graph() {
     Node* node = _first;
     while (node) {
@@ -151,14 +133,11 @@ void Graph::print_graph() {
         }
         node = node->_next_node;
     }
-    // mensagem de depuracao para verificar p numero de subgrafos obtido na leitura
     cout <<"O numero de particoes eh: " << _num_clusters << endl;
 }
 
 int Graph::conected(size_t node_id_1, size_t node_id_2) {
-    if (node_id_1 == node_id_2) return 1; // Vértices iguais são sempre conectados
-
-    // Verificar se ambos os nós existem no grafo
+    if (node_id_1 == node_id_2) return 1; 
     Node* start_node = _first;
     while (start_node && start_node->_id != node_id_1) {
         start_node = start_node->_next_node;
@@ -170,10 +149,10 @@ int Graph::conected(size_t node_id_1, size_t node_id_2) {
 
     if (!start_node || !end_node) {
         cerr << "Erro: Um ou ambos os vértices não existem no grafo." << endl;
-        return 0; // Retorna 0 se qualquer um dos nós não existir
+        return 0; 
     }
 
-    // Implementar busca em profundidade (DFS) para verificar conectividade
+    //busca em profundidade para verificar conectividade
     stack<size_t> s;
     unordered_set<size_t> visited;
     s.push(node_id_1);
@@ -222,7 +201,7 @@ Node* Graph::find_node(size_t id) {
     return nullptr; // Nó não encontrado
 }
 
-// Gap de um subgrafo
+
 float Graph::gap(const Subgraph& subgraph) {
     if (subgraph.vertices.empty()) {
         return 0.0f;
@@ -232,7 +211,7 @@ float Graph::gap(const Subgraph& subgraph) {
 }
 
 
-// Guloso
+/// GULOSO
 float Graph::guloso(size_t p) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -259,15 +238,14 @@ float Graph::guloso(size_t p) {
     }
 
     // Realizar DFS para criar subgrafos
-    size_t cluster_size = _number_of_nodes / p; // Tamanho alvo para cada subgrafo
+    size_t cluster_size = _number_of_nodes / p; 
     for (size_t i = 0; i < p && !nodes.empty(); ++i) {
         vector<size_t> vertices_in_subgraph;
         stack<size_t> s;
 
-        // Escolher um nó que não foi visitado
         size_t start_index = rand() % nodes.size();
         while (visited.find(nodes[start_index]->_id) != visited.end()) {
-            start_index = (start_index + 1) % nodes.size(); // Encontrar um nó não visitado
+            start_index = (start_index + 1) % nodes.size(); 
         }
         
         s.push(nodes[start_index]->_id);
@@ -346,7 +324,7 @@ bool Graph::check_connected(const vector<size_t>& vertices) {
     return visited.size() == vertices.size(); // Verifica se todos os vértices foram visitados
 }
 
-// Algoritmo guloso randomizado adaptativo (GRASP) para particionar o grafo e minimizar o gap
+/// GULOSO RANDOMIZADO ADAPTATIVO
 float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -434,7 +412,6 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     // Segunda fase: alocar vértices restantes em subgrafos garantindo a conectividade
     for (Node* node = _first; node; node = node->_next_node) {
         if (visited.find(node->_id) == visited.end()) {
-            // Tentativa de adicionar o vértice a um subgrafo existente mantendo a conectividade
             for (auto& subgraph : subgraphs) {
                 if (check_connected(subgraph.vertices)) {
                     for (size_t vertex_id : subgraph.vertices) {
@@ -442,17 +419,16 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
                             subgraph.vertices.push_back(node->_id);
                             visited.insert(node->_id);
 
-                            // Atualizar pesos e limites
                             subgraph.total_weight += node->_weight;
                             subgraph.max_weight = max(subgraph.max_weight, node->_weight);
                             subgraph.min_weight = min(subgraph.min_weight, node->_weight);
-                            goto next_vertex; // Saia do loop ao adicionar o vértice
+                            goto next_vertex; 
                         }
                     }
                 }
             }
         }
-next_vertex: ; // Marca o ponto de saída do loop
+    next_vertex: ; 
     }
 
     float total_gap = 0;
@@ -469,6 +445,8 @@ next_vertex: ; // Marca o ponto de saída do loop
     return total_gap;
 }
 
+
+/// GULOSO RANDOMIZADO ADAPTATIVO REATIVO
 float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -561,7 +539,7 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
         cout << "Iteração " << iter + 1 << endl;
         for (size_t i = 0; i < p; ++i) {
             float subgraph_gap = gap(subgraphs[i]);
-            if (std::isnan(subgraph_gap) || std::isinf(subgraph_gap)) {
+            if (isnan(subgraph_gap) || isinf(subgraph_gap)) {
                 cerr << "Erro: gap inválido calculado para o subgrafo " << i + 1 << ".\n";
                 return -1;
             }
@@ -582,7 +560,7 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
 
         if (current_gap < total_gap) {
             total_gap = current_gap;
-            best_subgraphs = subgraphs; // Armazenar a melhor solução
+            best_subgraphs = subgraphs; 
         }
 
         iter++;
@@ -596,7 +574,7 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
             cout << vertex << " ";
         }
         float subgraph_gap = gap(best_subgraphs[i]);
-        if (std::isnan(subgraph_gap) || std::isinf(subgraph_gap)) {
+        if (isnan(subgraph_gap) || isinf(subgraph_gap)) {
             cerr << "Erro: gap inválido calculado para o subgrafo " << i + 1 << ".\n";
             return -1;
         }
@@ -606,94 +584,3 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
 
     return total_gap;
 }
-
-
-
-// Algoritmo guloso randomizado adaptativo Reativo
-// float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
-//     // Lista de valores possíveis para alpha e suas probabilidades
-//     vector<float> alphas = {0.1f, 0.3f, 0.5f, 0.7f, 0.9f};
-//     vector<float> probabilities(alphas.size(), 1.0f / alphas.size()); // Probabilidade inicial uniforme
-//     vector<float> alpha_performance(alphas.size(), 0.0f); // Para medir o desempenho de cada alpha
-//     vector<int> alpha_count(alphas.size(), 0); // Contador de uso de cada alpha
-
-//     random_device rd;
-//     mt19937 gen(rd());
-
-//     float best_gap = numeric_limits<float>::max(); // Melhor gap encontrado
-//     auto start = chrono::high_resolution_clock::now(); // Tempo inicial
-
-//     // Iterar até o número máximo de iterações
-//     for (size_t iter = 0; iter < max_iter; ++iter) {
-//         // Escolher alpha com base nas probabilidades
-//         discrete_distribution<size_t> alpha_distribution(probabilities.begin(), probabilities.end());
-//         size_t alpha_index = alpha_distribution(gen);
-//         float alpha = alphas[alpha_index];
-
-//         cout << "Iteração " << iter + 1 << " - Alpha escolhido: " << alpha << endl;
-
-//         // Executar uma iteração do algoritmo guloso randomizado adaptativo
-//         vector<Subgraph> subgraphs(p);
-//         vector<float> subgraph_weights(p, 0.0f);
-//         float current_gap = guloso_randomizado_adaptativo(p, alpha);
-
-//         // Verificação de conectividade dos subgrafos
-//         bool conexo = true;
-//         for (const auto& subgraph : subgraphs) {
-//             if (!check_connected(subgraph.vertices)) {
-//                 conexo = false;
-//                 break;
-//             }
-//         }
-
-//         if (!conexo) {
-//             cerr << "Erro: Subgrafo não é conexo." << endl;
-//             current_gap = numeric_limits<float>::max(); // Penalizar a solução
-//         }
-
-//         // Atualizar o desempenho do alpha escolhido
-//         alpha_performance[alpha_index] += current_gap;
-//         alpha_count[alpha_index] += 1;
-
-//         // Atualizar o melhor gap se necessário
-//         if (current_gap < best_gap) {
-//             best_gap = current_gap;
-//         }
-
-//         // Recalcular as probabilidades a cada 10 iterações
-//         if ((iter + 1) % 10 == 0) {
-//             float total_performance = 0.0f;
-//             cout << "Probabilidades antes da atualização: ";
-//             for (const auto& prob : probabilities) {
-//                 cout << prob << " ";
-//             }
-//             cout << endl;
-
-//             for (size_t i = 0; i < alphas.size(); ++i) {
-//                 if (alpha_count[i] > 0) {
-//                     probabilities[i] = 1.0f / (alpha_performance[i] / alpha_count[i]);
-//                 } else {
-//                     probabilities[i] = 1.0f;
-//                 }
-//                 total_performance += probabilities[i];
-//             }
-
-//             // Normalizar as probabilidades
-//             for (auto& prob : probabilities) {
-//                 prob /= total_performance;
-//             }
-
-//             cout << "Probabilidades normalizadas: ";
-//             for (const auto& prob : probabilities) {
-//                 cout << prob << " ";
-//             }
-//             cout << endl;
-//         }
-//     }
-
-//     auto end = chrono::high_resolution_clock::now();
-//     chrono::duration<double> elapsed = end - start;
-//     cout << "Tempo total de execução: " << elapsed.count() << " segundos." << endl;
-
-//     return best_gap; // Retorna o melhor gap encontrado
-// }
