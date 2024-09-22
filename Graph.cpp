@@ -16,7 +16,7 @@ Graph::Graph(ifstream& instance) : _first(nullptr) {
         }
     }
 
-    // Ler vértices
+    // Ler vérticesqlq 
     getline(instance, line); 
     getline(instance, line); 
     while (getline(instance, line) && line.find(';') == string::npos) {
@@ -271,6 +271,18 @@ float Graph::guloso(size_t p) {
             }
         }
 
+        // Verificar se o subgrafo tem pelo menos 2 vértices
+        if (vertices_in_subgraph.size() < 2 && i > 0) {
+            // Se o subgrafo for muito pequeno, mova vértices dos subgrafos anteriores
+            for (size_t j = 0; j < i; ++j) {
+                if (subgraphs[j].vertices.size() > 2) {
+                    vertices_in_subgraph.push_back(subgraphs[j].vertices.back());
+                    subgraphs[j].vertices.pop_back();
+                    break;
+                }
+            }
+        }
+
         // Adicionar o subgrafo criado
         Subgraph& current_subgraph = subgraphs[i];
         current_subgraph.vertices = vertices_in_subgraph;
@@ -281,6 +293,21 @@ float Graph::guloso(size_t p) {
             current_subgraph.total_weight += node->_weight;
             current_subgraph.max_weight = max(current_subgraph.max_weight, node->_weight);
             current_subgraph.min_weight = min(current_subgraph.min_weight, node->_weight);
+        }
+    }
+
+    // Verificar se todos os subgrafos têm pelo menos 2 vértices
+    for (size_t i = 0; i < p; ++i) {
+        if (subgraphs[i].vertices.size() < 2) {
+            cerr << "Erro: Subgrafo " << i + 1 << " tem menos de 2 vértices. Corrigindo...\n";
+            // Mover vértices de outros subgrafos com mais de 2 vértices
+            for (size_t j = 0; j < p; ++j) {
+                if (subgraphs[j].vertices.size() > 2) {
+                    subgraphs[i].vertices.push_back(subgraphs[j].vertices.back());
+                    subgraphs[j].vertices.pop_back();
+                    break;
+                }
+            }
         }
     }
 
@@ -300,7 +327,47 @@ float Graph::guloso(size_t p) {
 }
 
 
-/// GULOSO RANDOMIZADO ADAPTATIVO
+
+// Função para verificar se um subgrafo é conexo
+bool Graph::check_connected(const vector<size_t>& vertices) {
+    if (vertices.empty()) return false;
+
+    unordered_set<size_t> visited;
+    stack<size_t> s;
+    s.push(vertices[0]); // Começa a busca a partir do primeiro vértice
+    visited.insert(vertices[0]);
+
+    while (!s.empty()) {
+        size_t current = s.top();
+        s.pop();
+
+        for (const size_t neighbor : vertices) {
+            if (conected(current, neighbor) && visited.find(neighbor) == visited.end()) {
+                visited.insert(neighbor);
+                s.push(neighbor);
+            }
+        }
+    }
+
+    return visited.size() == vertices.size(); // Verifica se todos os vértices foram visitados
+}
+
+
+// Otimizar a verificação da conectividade apenas uma vez e manter o estado
+bool Graph::is_connected_incremental(const vector<size_t>& vertices, size_t new_vertex) {
+    if (vertices.empty()) return true;
+    for (const size_t vertex : vertices) {
+        if (conected(new_vertex, vertex)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+
+/// GULOSO RANDOMIZADO ADAPTATIVO CORRIGIDO
 float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -315,101 +382,129 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     }
 
     unordered_set<size_t> visited;
-    unordered_map<size_t, Node*> node_map;
-    
+    vector<Node*> nodes;
+
     Node* current = _first;
     while (current) {
-        node_map[current->_id] = current;
+        nodes.push_back(current);
         current = current->_next_node;
     }
 
     size_t cluster_size = _number_of_nodes / p;
-    size_t remaining_nodes = _number_of_nodes;
 
-    // Primeira fase: alocar vértices em subgrafos com balanceamento
-    for (size_t i = 0; i < p && !node_map.empty(); ++i) {
+    // Primeira fase: alocar vértices em subgrafos
+    for (size_t i = 0; i < p && !nodes.empty(); ++i) {
         vector<size_t> vertices_in_subgraph;
-        stack<size_t> s;
+        size_t start_index = rand() % nodes.size();
+        while (visited.find(nodes[start_index]->_id) != visited.end()) {
+            start_index = (start_index + 1) % nodes.size();
+        }
 
-        // Escolher um nó inicial não visitado aleatoriamente
-        auto it = node_map.begin();
-        advance(it, rand() % node_map.size());
-        size_t start_id = it->first;
+        size_t start_vertex = nodes[start_index]->_id;
+        visited.insert(start_vertex);
+        vertices_in_subgraph.push_back(start_vertex);
 
-        s.push(start_id);
+        Node* start_node = find_node(start_vertex);
+        priority_queue<pair<float, size_t>> candidates;
 
-        while (!s.empty() && vertices_in_subgraph.size() < cluster_size && remaining_nodes > 0) {
-            size_t current_id = s.top();
-            s.pop();
+        // Inserir vértices conectados na fila de prioridades
+        for (Edge* edge = start_node->_first_edge; edge; edge = edge->_next_edge) {
+            if (visited.find(edge->_target_id) == visited.end()) {
+                Node* target_node = find_node(edge->_target_id);
+                candidates.push({ target_node->_weight, edge->_target_id });
+            }
+        }
 
-            if (visited.find(current_id) == visited.end()) {
-                visited.insert(current_id);
-                vertices_in_subgraph.push_back(current_id);
-                remaining_nodes--;
+        // Expandir subgrafo até atingir o tamanho desejado ou até o máximo de candidatos
+        while (!candidates.empty() && vertices_in_subgraph.size() < cluster_size) {
+            auto [weight, candidate_id] = candidates.top();
+            candidates.pop();
 
-                vector<pair<size_t, float>> RCL;
-                Node* current_node = node_map[current_id];
-                Edge* edge = current_node->_first_edge;
-                float max_evaluation = -numeric_limits<float>::infinity();
+            if (visited.find(candidate_id) == visited.end()) {
+                visited.insert(candidate_id);
+                vertices_in_subgraph.push_back(candidate_id);
 
-                // Construir a RCL com base nas conexões do nó atual
-                while (edge) {
+                // Adicionar vértices conectados ao novo candidato na fila
+                Node* candidate_node = find_node(candidate_id);
+                for (Edge* edge = candidate_node->_first_edge; edge; edge = edge->_next_edge) {
                     if (visited.find(edge->_target_id) == visited.end()) {
-                        Node* target_node = node_map[edge->_target_id];
-                        float evaluation = target_node->_weight;
-                        RCL.emplace_back(edge->_target_id, evaluation);
-                        max_evaluation = max(max_evaluation, evaluation);
-                    }
-                    edge = edge->_next_edge;
-                }
-
-                if (!RCL.empty()) {
-                    float threshold = max_evaluation * alpha;
-                    auto rcl_end = partition(RCL.begin(), RCL.end(),
-                                            [threshold](const pair<size_t, float>& candidate) {
-                                                return candidate.second >= threshold;
-                                            });
-
-                    if (rcl_end != RCL.begin()) {
-                        size_t rcl_index = rand() % distance(RCL.begin(), rcl_end);
-                        s.push(RCL[rcl_index].first);
+                        Node* target_node = find_node(edge->_target_id);
+                        candidates.push({ target_node->_weight, edge->_target_id });
                     }
                 }
             }
         }
 
-        // Adicionar vértices ao subgrafo atual
+        // Verificar se o subgrafo contém pelo menos dois vértices
+        if (vertices_in_subgraph.size() < 2) {
+            cerr << "O subgrafo gerado contém menos de dois vértices. Ajustando...\n";
+            
+            // Procurar e adicionar vértices não visitados adjacentes
+            for (Node* extra_node : nodes) {
+                if (visited.find(extra_node->_id) == visited.end()) {
+                    if (is_connected_incremental(vertices_in_subgraph, extra_node->_id)) {
+                        vertices_in_subgraph.push_back(extra_node->_id);
+                        visited.insert(extra_node->_id);
+
+                        if (vertices_in_subgraph.size() >= 2) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Se ainda não temos dois vértices, houve uma falha no ajuste
+            if (vertices_in_subgraph.size() < 2) {
+                cerr << "Não foi possível encontrar vértices suficientes para o subgrafo.\n";
+                return -1;
+            }
+        }
+
         Subgraph& current_subgraph = subgraphs[i];
         current_subgraph.vertices = vertices_in_subgraph;
+
         for (size_t vertex_id : vertices_in_subgraph) {
-            Node* node = node_map[vertex_id];
+            Node* node = find_node(vertex_id);
             current_subgraph.total_weight += node->_weight;
             current_subgraph.max_weight = max(current_subgraph.max_weight, node->_weight);
             current_subgraph.min_weight = min(current_subgraph.min_weight, node->_weight);
-            node_map.erase(vertex_id);
         }
     }
 
-    // Segunda fase: redistribuição para garantir a homogeneidade
-    for (auto& subgraph : subgraphs) {
-        while (subgraph.vertices.size() < cluster_size && !node_map.empty()) {
-            auto it = node_map.begin();
-            size_t extra_node_id = it->first;
+    // Segunda fase: alocar vértices restantes em subgrafos garantindo a conectividade
+    for (Node* node = _first; node; node = node->_next_node) {
+        if (visited.find(node->_id) == visited.end()) {
+            // Tentativa de adicionar o vértice a um subgrafo existente mantendo a conectividade
+            for (auto& subgraph : subgraphs) {
+                if (is_connected_incremental(subgraph.vertices, node->_id)) {
+                    subgraph.vertices.push_back(node->_id);
+                    visited.insert(node->_id);
 
-            if (visited.find(extra_node_id) == visited.end()) {
-                subgraph.vertices.push_back(extra_node_id);
-                visited.insert(extra_node_id);
-
-                Node* node = node_map[extra_node_id];
-                subgraph.total_weight += node->_weight;
-                subgraph.max_weight = max(subgraph.max_weight, node->_weight);
-                subgraph.min_weight = min(subgraph.min_weight, node->_weight);
-                node_map.erase(extra_node_id);
-                remaining_nodes--;
+                    // Atualizar pesos e limites
+                    subgraph.total_weight += node->_weight;
+                    subgraph.max_weight = max(subgraph.max_weight, node->_weight);
+                    subgraph.min_weight = min(subgraph.min_weight, node->_weight);
+                    break; // Saia do loop ao adicionar o vértice
+                }
             }
         }
     }
 
+    // Verificar novamente que todos os subgrafos têm pelo menos dois vértices
+    for (auto& subgraph : subgraphs) {
+        if (subgraph.vertices.size() < 2) {
+            cerr << "Ajustando subgrafo com menos de dois vértices na fase final.\n";
+            for (Node* extra_node : nodes) {
+                if (visited.find(extra_node->_id) == visited.end() && is_connected_incremental(subgraph.vertices, extra_node->_id)) {
+                    subgraph.vertices.push_back(extra_node->_id);
+                    visited.insert(extra_node->_id);
+                    if (subgraph.vertices.size() >= 2) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     // Calcular e imprimir o gap para cada subgrafo
     float total_gap = 0;
@@ -428,8 +523,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
 
 
 
-
-/// GULOSO RANDOMIZADO ADAPTATIVO REATIVO
+/// GULOSO RANDOMIZADO ADAPTATIVO REATIVO CORRIGIDO
 float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -510,7 +604,30 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
             Subgraph& current_subgraph = subgraphs[i];
             current_subgraph.vertices = vertices_in_subgraph;
 
-            for (size_t vertex_id : vertices_in_subgraph) {
+            // Verificação se o subgrafo contém pelo menos dois vértices
+            if (current_subgraph.vertices.size() < 2) {
+                cerr << "O subgrafo gerado contém menos de dois vértices. Ajustando...\n";
+                
+                // Procurar e adicionar vértices não visitados adjacentes
+                for (Node* extra_node : nodes) {
+                    if (visited.find(extra_node->_id) == visited.end() && 
+                        is_connected_incremental(current_subgraph.vertices, extra_node->_id)) {
+                        current_subgraph.vertices.push_back(extra_node->_id);
+                        visited.insert(extra_node->_id);
+                        if (current_subgraph.vertices.size() >= 2) {
+                            break;
+                        }
+                    }
+                }
+
+                // Se ainda não temos dois vértices, houve uma falha no ajuste
+                if (current_subgraph.vertices.size() < 2) {
+                    cerr << "Não foi possível encontrar vértices suficientes para o subgrafo.\n";
+                    return -1;
+                }
+            }
+
+            for (size_t vertex_id : current_subgraph.vertices) {
                 Node* node = find_node(vertex_id);
                 current_subgraph.total_weight += node->_weight;
                 current_subgraph.max_weight = max(current_subgraph.max_weight, node->_weight);

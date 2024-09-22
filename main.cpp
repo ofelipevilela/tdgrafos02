@@ -5,11 +5,11 @@ using namespace std;
 
 void showMenu() {
     cout << "\nMenu:\n";
-    cout << "1. Guloso\n";
-    cout << "2. Guloso randomizado adaptativo\n";
-    cout << "3. Guloso randomizado adaptativo reativo\n";
-    cout << "4. Imprimir grafo\n"; // Nova opção para imprimir o grafo
-    cout << "0. Sair\n";
+    cout << "1) Guloso\n";
+    cout << "2) Guloso randomizado adaptativo\n";
+    cout << "3) Guloso randomizado adaptativo reativo\n";
+    cout << "4) Imprimir grafo\n"; // Nova opção para imprimir o grafo
+    cout << "0) Sair\n";
     cout << "Escolha uma opcao: ";
 }
 
