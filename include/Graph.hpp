@@ -39,8 +39,7 @@ public:
     float guloso(size_t p);
     float guloso_randomizado_adaptativo(size_t p, float alpha);
     float guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter);
-    bool check_connected(const vector<size_t>& vertices);
-    bool is_connected_incremental(const vector<size_t>& vertices, size_t new_vertex);
+    bool verifica_conexo(const vector<size_t>& vertices, size_t new_vertex);
 
 private:
     size_t _number_of_nodes;

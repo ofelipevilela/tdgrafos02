@@ -328,33 +328,9 @@ float Graph::guloso(size_t p) {
 
 
 
-// Função para verificar se um subgrafo é conexo
-bool Graph::check_connected(const vector<size_t>& vertices) {
-    if (vertices.empty()) return false;
-
-    unordered_set<size_t> visited;
-    stack<size_t> s;
-    s.push(vertices[0]); // Começa a busca a partir do primeiro vértice
-    visited.insert(vertices[0]);
-
-    while (!s.empty()) {
-        size_t current = s.top();
-        s.pop();
-
-        for (const size_t neighbor : vertices) {
-            if (conected(current, neighbor) && visited.find(neighbor) == visited.end()) {
-                visited.insert(neighbor);
-                s.push(neighbor);
-            }
-        }
-    }
-
-    return visited.size() == vertices.size(); // Verifica se todos os vértices foram visitados
-}
-
 
 // Otimizar a verificação da conectividade apenas uma vez e manter o estado
-bool Graph::is_connected_incremental(const vector<size_t>& vertices, size_t new_vertex) {
+bool Graph::verifica_conexo(const vector<size_t>& vertices, size_t new_vertex) {
     if (vertices.empty()) return true;
     for (const size_t vertex : vertices) {
         if (conected(new_vertex, vertex)) {
@@ -365,9 +341,7 @@ bool Graph::is_connected_incremental(const vector<size_t>& vertices, size_t new_
 }
 
 
-
-
-/// GULOSO RANDOMIZADO ADAPTATIVO CORRIGIDO
+/// GULOSO RANDOMIZADO ADAPTATIVO
 float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -442,7 +416,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
             // Procurar e adicionar vértices não visitados adjacentes
             for (Node* extra_node : nodes) {
                 if (visited.find(extra_node->_id) == visited.end()) {
-                    if (is_connected_incremental(vertices_in_subgraph, extra_node->_id)) {
+                    if (verifica_conexo(vertices_in_subgraph, extra_node->_id)) {
                         vertices_in_subgraph.push_back(extra_node->_id);
                         visited.insert(extra_node->_id);
 
@@ -476,7 +450,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
         if (visited.find(node->_id) == visited.end()) {
             // Tentativa de adicionar o vértice a um subgrafo existente mantendo a conectividade
             for (auto& subgraph : subgraphs) {
-                if (is_connected_incremental(subgraph.vertices, node->_id)) {
+                if (verifica_conexo(subgraph.vertices, node->_id)) {
                     subgraph.vertices.push_back(node->_id);
                     visited.insert(node->_id);
 
@@ -495,7 +469,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
         if (subgraph.vertices.size() < 2) {
             cerr << "Ajustando subgrafo com menos de dois vértices na fase final.\n";
             for (Node* extra_node : nodes) {
-                if (visited.find(extra_node->_id) == visited.end() && is_connected_incremental(subgraph.vertices, extra_node->_id)) {
+                if (visited.find(extra_node->_id) == visited.end() && verifica_conexo(subgraph.vertices, extra_node->_id)) {
                     subgraph.vertices.push_back(extra_node->_id);
                     visited.insert(extra_node->_id);
                     if (subgraph.vertices.size() >= 2) {
@@ -523,7 +497,7 @@ float Graph::guloso_randomizado_adaptativo(size_t p, float alpha) {
 
 
 
-/// GULOSO RANDOMIZADO ADAPTATIVO REATIVO CORRIGIDO
+/// GULOSO RANDOMIZADO ADAPTATIVO REATIVO 
 float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
     if (p > _number_of_nodes) {
         cerr << "Número de clusters não pode ser maior que o número de vértices.\n";
@@ -611,7 +585,7 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
                 // Procurar e adicionar vértices não visitados adjacentes
                 for (Node* extra_node : nodes) {
                     if (visited.find(extra_node->_id) == visited.end() && 
-                        is_connected_incremental(current_subgraph.vertices, extra_node->_id)) {
+                        verifica_conexo(current_subgraph.vertices, extra_node->_id)) {
                         current_subgraph.vertices.push_back(extra_node->_id);
                         visited.insert(extra_node->_id);
                         if (current_subgraph.vertices.size() >= 2) {
@@ -684,3 +658,4 @@ float Graph::guloso_randomizado_adaptativo_reativo(size_t p, size_t max_iter) {
 
     return total_gap;
 }
+
