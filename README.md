@@ -11,6 +11,7 @@ Para compilar o projeto, siga os passos abaixo:
 ## 1. Clone o repositório:
     
    git clone https://github.com/Luiizrst/tdgrafos02.git
+   
    cd tdgrafos02
    
 ## 3. Você pode compilar manualmente com:
